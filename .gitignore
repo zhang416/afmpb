@@ -1,0 +1,6 @@
+*~
+/include/*~
+/src/*~
+/example/*.txt
+/example/afmpb
+/contrib/dashmm/*
