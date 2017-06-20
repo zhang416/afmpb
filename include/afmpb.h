@@ -65,6 +65,8 @@ struct Element {
 
 // Gaussian quadrature points inside each element
 struct GNode {
+  GNode (int i, dashmm::Point p, dashmm::Point n) : 
+    index{i}, position{p}, normal{n} {}
   int index; 
   dashmm::Point position;   
   dashmm::Point normal; 
@@ -95,8 +97,10 @@ private:
                     std::vector<Node> &nodes, 
                     std::vector<GNode> &gauss); 
   void readMesh(std::vector<Node> &nodes); 
-  double tetrahedronVolume(dashmm::Point &A, dashmm::Point &B, 
-                           dashmm::Point &C); 
+  void removeIsolatedNodes(std::vector<Node> &nodes); 
+  void processElementGeometry(std::vector<Node> &nodes); 
+  void generateGaussianPoint(const std::vector<Node> &nodes, 
+                             std::vector<GNode> &gauss); 
 
 private: 
   std::ifstream pqr_; 
@@ -118,38 +122,17 @@ private:
   double sigma_; 
 
   int natoms_; 
+  int nnodes_; 
+  int ngauss_; 
   dashmm::Array<Atom> atoms_; 
   std::vector<Element> elements_; 
   dashmm::Array<Node>  nodes_; 
   dashmm::Array<GNode> gauss_; 
-  int ngauss_per_element_; 
 
   double area_; 
   double volume_; 
   double b_ = 0.0; 
 }; 
-
-  /*    
-class AFMPB {
-public:
-
-  void setup() {
-    readPQRFile(); 
-    if (mesh_.is_open()) {
-      readMeshFile(); 
-    } else {
-      generateMesh();
-    }
-  }
-
-private: 
-  void readPQRFile(); 
-  void readMeshFile(); 
-  void generateMesh(); 
-
-}; 
-
-  */
 
 
 } // namespace afmpb 
