@@ -7,6 +7,10 @@ int main(int argc, char **argv) {
     afmpb::AFMPB system(std::move(parameter)); 
 
     system.setup(); 
+
+    system.solve(); 
+
+    system.collect(); 
   } 
 
   auto err = afmpb::finalize(); 

@@ -5,6 +5,7 @@
 #include <fstream>
 #include <memory>
 #include <string>
+#include <complex>
 #include "dashmm/dashmm.h"
 
 namespace afmpb {
@@ -39,12 +40,15 @@ struct Atom {
 }; 
 
 struct Patch {
+  Patch(dashmm::Point p, dashmm::Point n, double w) : 
+    position{p}, normal{n}, weight{w} { } 
   dashmm::Point position; 
   dashmm::Point normal;   // Normal direction of the patch 
   double weight;          // Quadrature weight 
 }; 
 
 struct Node {
+  Node() { }
   int index;                // Index of the node
   dashmm::Point position;   // Position of the node 
   dashmm::Point normal_i;   // Inner normal derivative of the node
@@ -53,23 +57,25 @@ struct Node {
   double area;              // Area of the patch for the node 
   double projected;         // Projected area 
   double solution[2];       // Solution value 
-  double rhs[2];            // Right-hand side value 
+  double value[2];          // Right-hand side value 
   std::map<int, std::vector<double>> cached; // Cached values for S_to_T
 }; 
 
 struct Element {
   int index;                // Index of the element
+  double area;              // Area of the element
   dashmm::Point normal;     // Normal direction of the element
   std::vector<int> nodes;   // Index of the nodes of the element
 }; 
 
 // Gaussian quadrature points inside each element
 struct GNode {
-  GNode (int i, dashmm::Point p, dashmm::Point n) : 
-    index{i}, position{p}, normal{n} {}
+  GNode() { }
+  GNode(int i, dashmm::Point p, dashmm::Point n) : 
+    index{i}, position{p}, normal_o{n} {}
   int index; 
   dashmm::Point position;   
-  dashmm::Point normal; 
+  dashmm::Point normal_o; 
   double value[2];          
 }; 
 
@@ -82,13 +88,25 @@ public:
     potential_.close(); 
     if (mesh_.is_open())
       mesh_.close();
+
+    //assert(atoms_.destroy() == dashmm::kSuccess); 
+    //assert(gauss_.destroy() == dashmm::kSuccess); 
+
+    /*
+    assert(nodes_.destroy() == dashmm::kSuccess); 
+    */
+    if (!mesh_format_) {
+      delete [] xi_; 
+      delete [] eta_; 
+      delete [] weight_;
+    }
   }
   
   void setup(); 
 
-  double totalFreeEnergy() const {
-    return surface_tension_ * area_ + pressure_ * volume_ + b_; 
-  }
+  void solve(); 
+
+  void collect(); 
 
 private: 
   void processPQRFile(std::string &pqr_file); 
@@ -101,6 +119,9 @@ private:
   void processElementGeometry(std::vector<Node> &nodes); 
   void generateGaussianPoint(const std::vector<Node> &nodes, 
                              std::vector<GNode> &gauss); 
+  void evaluateGaussianPoint(); 
+  double totalFreeEnergy(const GNode *gauss, int ngauss, 
+                         const Node *nodes, int nnodes) const; 
 
 private: 
   std::ifstream pqr_; 
@@ -121,6 +142,11 @@ private:
   double cut2_; 
   double sigma_; 
 
+  // Parameters for Gaussian points on each element
+  double *xi_; 
+  double *eta_; 
+  double *weight_; 
+  
   int natoms_; 
   int nnodes_; 
   int ngauss_; 
@@ -131,7 +157,6 @@ private:
 
   double area_; 
   double volume_; 
-  double b_ = 0.0; 
 }; 
 
 

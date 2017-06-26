@@ -1,11 +1,16 @@
 #include <algorithm>
+#include <iomanip>
 #include <cstdio>
 #include <stdexcept>
 #include <getopt.h>
 #include <hpx/hpx.h>
 #include "afmpb.h"
+#include "afmpb_rhs.h"
 
 namespace afmpb {
+
+dashmm::Evaluator<Atom, GNode, dashmm::AFMPBRHS, dashmm::FMM97> interp{}; 
+dashmm::Evaluator<Atom, Node, dashmm::AFMPBRHS, dashmm::FMM97> rhs{};
 
 void usage(char *program) {
   fprintf(stdout, "usage: %s (--pqr-file=FILE)\n"
@@ -24,6 +29,7 @@ void usage(char *program) {
 }
 
 std::unique_ptr<Configuration> init(int argc, char **argv) {
+
   if (HPX_SUCCESS != hpx_init(&argc, &argv)) 
     return std::unique_ptr<Configuration>{nullptr}; 
 
@@ -111,6 +117,7 @@ std::unique_ptr<Configuration> init(int argc, char **argv) {
     p = nullptr; 
   } 
 
+
   return std::unique_ptr<Configuration>{p}; 
 }
  
@@ -147,6 +154,19 @@ AFMPB::AFMPB(std::unique_ptr<Configuration> p) {
     cut2_ = 0.3;
   } 
   sigma_ = 0.001; 
+
+
+  if (!mesh_format_) {
+    xi_ = new double[7]{0.101286507323456, 0.797426958353087, 
+                        0.101286507323456, 0.470142064105115, 
+                        0.059715871789770, 0.470142064105115, 1.0/3.0};
+    eta_ = new double[7]{0.101286507323456, 0.101286507323456, 
+                         0.797426958353087, 0.470142064105115, 
+                         0.470142064105115, 0.059715871789770, 1.0/3.0};
+    weight_ = new double[7]{0.125939180544827, 0.125939180544827, 
+                            0.125939180544827, 0.132394152788506, 
+                            0.132394152788506, 0.132394152788506, 0.225};
+  }
 }
 
 void AFMPB::processPQRFile(std::string &pqr_file) {
@@ -300,29 +320,29 @@ void AFMPB::generateMesh(int s, std::vector<Atom> &molecule,
 
       volume_ += point_dot(node.normal_i, node.position) / 3 * area / scale; 
 
-      node.patch[0].position = Point{center.x() + radius * v11, 
-                                     center.y() + radius * v21, 
-                                     center.z() + radius * v31}; 
-      node.patch[0].normal = Point{v11, v21, v31}; 
-      node.patch[0].weight = p1; 
+      // Patch 1
+      double p1x = center.x() + radius * v11; 
+      double p1y = center.y() + radius * v21;
+      double p1z = center.z() + radius * v31; 
+      node.patch.emplace_back(Point{p1x, p1y, p1z}, Point{v11, v21, v31}, p1);
+      
+      // Patch 2
+      double p2x = center.x() + radius * v12; 
+      double p2y = center.y() + radius * v22;
+      double p2z = center.z() + radius * v32; 
+      node.patch.emplace_back(Point{p2x, p2y, p2z}, Point{v12, v22, v32}, p1); 
 
-      node.patch[1].position = Point{center.x() + radius * v12, 
-                                     center.y() + radius * v22, 
-                                     center.z() + radius * v32}; 
-      node.patch[1].normal = Point{v12, v22, v32}; 
-      node.patch[1].weight = p1; 
+      // Patch 3
+      double p3x = center.x() + radius * v13;
+      double p3y = center.y() + radius * v23;
+      double p3z = center.z() + radius * v33;
+      node.patch.emplace_back(Point{p3x, p3y, p3z}, Point{v13, v23, v33}, p3); 
 
-      node.patch[2].position = Point{center.x() + radius * v13, 
-                                     center.y() + radius * v23, 
-                                     center.z() + radius * v33}; 
-      node.patch[2].normal = Point{v13, v23, v33}; 
-      node.patch[2].weight = p3; 
-
-      node.patch[3].position = Point{center.x() + radius * v14, 
-                                     center.y() + radius * v24, 
-                                     center.z() + radius * v34}; 
-      node.patch[3].normal = Point{v14, v24, v34}; 
-      node.patch[3].weight = p3;
+      // Patch 4 
+      double p4x = center.x() + radius * v14;
+      double p4y = center.y() + radius * v24;
+      double p4z = center.z() + radius * v34;
+      node.patch.emplace_back(Point{p4x, p4y, p4z}, Point{v14, v24, v34}, p3); 
 
       node.index = nodes.size(); 
       nodes.push_back(node); 
@@ -504,6 +524,7 @@ void AFMPB::processElementGeometry(std::vector<Node> &nodes) {
 
     // Compute the area of the element 
     double area = e.normal.norm() / 2; 
+    e.area = area; 
     
     // Update the total surface area of the molecule 
     area_ += area; 
@@ -614,12 +635,6 @@ void AFMPB::processElementGeometry(std::vector<Node> &nodes) {
 void AFMPB::generateGaussianPoint(const std::vector<Node> &nodes, 
                                   std::vector<GNode> &gauss) {
   using namespace dashmm; 
-  const double xi[] = {0.101286507323456, 0.797426958353087, 
-                       0.101286507323456, 0.470142064105115, 
-                       0.059715871789770, 0.470142064105115, 1.0/3.0};
-  const double eta[] = {0.101286507323456, 0.101286507323456, 
-                        0.797426958353087, 0.470142064105115, 
-                        0.470142064105115, 0.059715871789770, 1.0/3.0};
 
   for (auto && e : elements_) {
     int i1 = e.nodes[0]; 
@@ -631,22 +646,64 @@ void AFMPB::generateGaussianPoint(const std::vector<Node> &nodes,
 
     for (int j = 0; j < 7; ++j) {
       int index = 7 * e.index + j; 
-      double zeta = 1 - xi[j] - eta[j]; 
-      double x = p1.x() * zeta + p2.x() * xi[j] + p3.x() * eta[j]; 
-      double y = p1.y() * zeta + p2.x() * xi[j] + p3.x() * eta[j]; 
-      double z = p1.z() * zeta + p2.x() * xi[j] + p3.x() * eta[j]; 
+      double zeta = 1 - xi_[j] - eta_[j]; 
+      double x = p1.x() * zeta + p2.x() * xi_[j] + p3.x() * eta_[j]; 
+      double y = p1.y() * zeta + p2.x() * xi_[j] + p3.x() * eta_[j]; 
+      double z = p1.z() * zeta + p2.x() * xi_[j] + p3.x() * eta_[j]; 
       gauss.emplace_back(index, Point{x, y, z}, e.normal); 
     }
   }
 }
 
+void AFMPB::evaluateGaussianPoint() {
+
+}
+
+double AFMPB::totalFreeEnergy(const GNode *gauss, int ngauss, 
+                              const Node *nodes, int nnodes) const {
+
+  double b = 0; 
+
+  if (mesh_format_) {
+    for (auto && e : elements_) {
+      int i1 = e.nodes[0]; 
+      int i2 = e.nodes[1]; 
+      int i3 = e.nodes[2]; 
+      int index = e.index; 
+      double temp = 0; 
+      for (int j = 0; j < 7; ++j) {
+        double zeta = 1.0 - xi_[j] - eta_[j]; 
+        double f = nodes[i1].solution[0] * zeta + 
+          nodes[i2].solution[0] * xi_[j] + nodes[i3].solution[0] * eta_[j];
+        double h = nodes[i1].solution[1] * zeta + 
+          nodes[i2].solution[1] * xi_[j] + nodes[i3].solution[1] * eta_[j]; 
+        temp += (gauss[index + j].value[0] * h * dielectric_ - 
+                 gauss[index + j].value[1] * f) * weight_[j]; 
+      }
+      b += temp * e.area; 
+    }
+      
+    b /= 8 * M_PI;     
+  } else {
+    // When using built-in mesh, the number of Gaussian quadrature points is the
+    // same as the number of nodes of the surface mesh 
+    for (int i = 0; i < ngauss; ++i) {
+      b += (gauss[i].value[0] * nodes[i].solution[1] * dielectric_ - 
+             gauss[i].value[1] * nodes[i].solution[0] * nodes[i].area) / 2; 
+    }
+    
+    b /= 4 * M_PI / 0.985; 
+  }
+  
+  return surface_tension_ * area_ + pressure_ * volume_ + b;
+}
+
 void AFMPB::setup() {
   auto molecule = readAtoms(); 
-  int err = atoms_.allocate(natoms_); 
+  /*
+  int err = atoms_.allocate(natoms_, molecule.data()); 
   assert(err == dashmm::kSuccess); 
-  err = atoms_.put(0, natoms_, molecule.data()); 
-  assert(err == dashmm::kSuccess); 
-
+  */
   std::vector<Node> nodes; 
   std::vector<GNode> gauss; 
 
@@ -662,18 +719,67 @@ void AFMPB::setup() {
   
   /*
   nnodes_ = nodes.size(); 
-  err = nodes_.allocate(nnodes_); 
-  assert(err == dashmm::kSuccess); 
-  err = nodes_.put(0, nnodes_, nodes.data()); 
+  err = nodes_.allocate(nnodes_, nodes.data()); 
   assert(err == dashmm::kSuccess); 
 
   ngauss_ = gauss.size(); 
-  err = gauss_.allocate(ngauss_); 
-  assert(err == dashmm::kSuccess); 
-  err = gauss_.put(0, ngauss_, gauss.data()); 
+  err = gauss_.allocate(ngauss_, gauss.data()); 
   assert(err == dashmm::kSuccess); 
   */
+
+  log_ << "\n----------------------------------------------------------------\n"
+       << "*      Adaptive Fast Multipole Poisson Boltzmann Solver        *\n"
+       <<  "----------------------------------------------------------------\n\n";
 }
 
+void AFMPB::solve() {
+
+}
+
+void AFMPB::collect() {
+  /*
+  auto gauss = gauss_.collect(); 
+  auto nodes = nodes_.collect(); 
+  
+  if (gauss) {
+    std::sort(&gauss[0], &gauss[ngauss_], 
+              [] (const GNode &a, const GNode &b) -> bool {
+                return (a.index < b.index);
+              });
+  }
+
+  if (nodes) {
+    std::sort(&nodes[0], &nodes[nnodes_], 
+              [] (const Node &a, const Node &b) -> bool {
+                return (a.index < b.index);
+              });
+  }
+
+  // Compute total free energy 
+  double energy = totalFreeEnergy(gauss.get(), ngauss_, 
+                                  nodes.get(), nnodes_); 
+
+  // Write potentials 
+  potential_.precision(5); 
+  potential_ << std::scientific; 
+  for (int i = 0; i < nnodes_; ++i) {
+    const Node &n = nodes[i]; 
+    potential_ << n.position.x() << " " 
+               << n.position.y() << " "
+               << n.position.z() << " " 
+               << n.normal_o.x() << " "
+               << n.normal_o.y() << " " 
+               << n.normal_o.z() << " " 
+               << n.solution[0]  << " " 
+               << n.solution[1]  << "\n";
+  }
+
+  if (!mesh_format_) {
+    for (auto && e : elements_) {
+      potential_ << e.nodes[0] << " " << e.nodes[1] << " " << e.nodes[2] << "\n";
+    }
+  } 
+  */ 
+}
 
 } // namespace afmpb
