@@ -56,8 +56,8 @@ struct Node {
   std::vector<Patch> patch; // Node-patch 
   double area;              // Area of the patch for the node 
   double projected;         // Projected area 
-  double solution[2];       // Solution value 
-  double value[2];          // Right-hand side value 
+  double charge[2];         // Input to the matrix-vector multiply
+  double value[2];          // Result of the matrix-vector multiply
   std::map<int, std::vector<double>> cached; // Cached values for S_to_T
 }; 
 

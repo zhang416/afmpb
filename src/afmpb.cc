@@ -5,6 +5,7 @@
 #include <getopt.h>
 #include <hpx/hpx.h>
 #include "afmpb.h"
+#include "afmpb_lhs.h"
 #include "afmpb_rhs.h"
 
 namespace afmpb {
