@@ -203,7 +203,6 @@ class FMM97NL3 {
     int MtoT = expansion_t::weight_estimate(Operation::MtoT);
     int StoT = expansion_t::weight_estimate(Operation::StoT);
     if (well_sep_test_asymmetric(S->idx, T->idx)) {
-      //S->dag.MtoT(&T->dag, MtoT);
       T->dag.StoT(&S->dag, StoT); 
     } else {
       if (S->is_leaf()) {

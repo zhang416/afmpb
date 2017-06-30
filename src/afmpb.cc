@@ -7,11 +7,13 @@
 #include "afmpb.h"
 #include "afmpb_lhs.h"
 #include "afmpb_rhs.h"
+#include "fmm97NL3_method.h"
 
 namespace afmpb {
 
 dashmm::Evaluator<Atom, GNode, dashmm::AFMPBRHS, dashmm::FMM97> interp{}; 
 dashmm::Evaluator<Atom, Node, dashmm::AFMPBRHS, dashmm::FMM97> rhs{};
+dashmm::Evaluator<Node, Node, dashmm::AFMPBLHS, dashmm::FMM97NL3> lhs{}; 
 
 void usage(char *program) {
   fprintf(stdout, "usage: %s (--pqr-file=FILE)\n"
@@ -674,10 +676,10 @@ double AFMPB::totalFreeEnergy(const GNode *gauss, int ngauss,
       double temp = 0; 
       for (int j = 0; j < 7; ++j) {
         double zeta = 1.0 - xi_[j] - eta_[j]; 
-        double f = nodes[i1].solution[0] * zeta + 
-          nodes[i2].solution[0] * xi_[j] + nodes[i3].solution[0] * eta_[j];
-        double h = nodes[i1].solution[1] * zeta + 
-          nodes[i2].solution[1] * xi_[j] + nodes[i3].solution[1] * eta_[j]; 
+        double f = nodes[i1].value[0] * zeta + 
+          nodes[i2].value[0] * xi_[j] + nodes[i3].value[0] * eta_[j];
+        double h = nodes[i1].value[1] * zeta + 
+          nodes[i2].value[1] * xi_[j] + nodes[i3].value[1] * eta_[j]; 
         temp += (gauss[index + j].value[0] * h * dielectric_ - 
                  gauss[index + j].value[1] * f) * weight_[j]; 
       }
@@ -689,8 +691,8 @@ double AFMPB::totalFreeEnergy(const GNode *gauss, int ngauss,
     // When using built-in mesh, the number of Gaussian quadrature points is the
     // same as the number of nodes of the surface mesh 
     for (int i = 0; i < ngauss; ++i) {
-      b += (gauss[i].value[0] * nodes[i].solution[1] * dielectric_ - 
-             gauss[i].value[1] * nodes[i].solution[0] * nodes[i].area) / 2; 
+      b += (gauss[i].value[0] * nodes[i].value[1] * dielectric_ - 
+             gauss[i].value[1] * nodes[i].value[0] * nodes[i].area) / 2; 
     }
     
     b /= 4 * M_PI / 0.985; 
@@ -771,8 +773,8 @@ void AFMPB::collect() {
                << n.normal_o.x() << " "
                << n.normal_o.y() << " " 
                << n.normal_o.z() << " " 
-               << n.solution[0]  << " " 
-               << n.solution[1]  << "\n";
+               << n.value[0]  << " " 
+               << n.value[1]  << "\n";
   }
 
   if (!mesh_format_) {

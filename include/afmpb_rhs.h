@@ -197,7 +197,7 @@ class AFMPBRHS {
 
   std::unique_ptr<expansion_t> I_to_I(Index s_index, Index t_index) const {
     ViewSet views{kTargetIntermediate}; 
-    lap_i_to_i(s_index, t_index, views_, 0, views); 
+    lap_i_to_i(s_index, t_index, views_, 0, 0, views); 
     expansion_t *retval = new expansion_t{views};
     return std::unique_ptr<expansion_t>{retval};
   }
