@@ -10,7 +10,7 @@ int main(int argc, char **argv) {
 
     system.solve(); 
 
-    system.collect(); 
+    //system.collect(); 
   } 
 
   auto err = afmpb::finalize(); 

@@ -146,6 +146,10 @@ AFMPB::AFMPB(std::unique_ptr<Configuration> p) {
   pressure_ = p->pressure; 
   accuracy_ = p->accuracy; 
 
+  // Only 3-/6-digit accuracy are supported. For threshold, 40 is used for
+  // 3-digit accuracy and 80 is used for 6-digit accuracy. 
+  refine_limit_ = (accuracy_ == 3 ? 40 : 80); 
+
   if (mesh_format_ == 0) {
     cut1_ = 0.1; 
     cut2_ = 0.0001; 
@@ -186,21 +190,21 @@ void AFMPB::processPQRFile(std::string &pqr_file) {
   std::cout << natoms_ << "\n";
 }
 
-std::vector<Atom> AFMPB::readAtoms() {
-  std::vector<Atom> molecule(natoms_); 
+Atom *AFMPB::readAtoms() {
+  Atom *molecule = new Atom[natoms_]; 
   int i = 0; 
-  double x, y, z, q, r;
+  double x, y, z, q, r; 
   double probe_radius = (!mesh_format_ ? probe_radius_ : 0.0); 
   while (pqr_ >> x >> y >> z >> q >> r) {
     molecule[i].position = dashmm::Point{x, y, z}; 
     molecule[i].charge = q; 
     molecule[i].radius = r + probe_radius; 
-    i++; 
-  }
-  return molecule; 
+    i++;
+  } 
+  return molecule;
 }
 
-void AFMPB::generateMesh(int s, std::vector<Atom> &molecule, 
+void AFMPB::generateMesh(int s, const Atom *molecule, 
                          std::vector<Node> &nodes, 
                          std::vector<GNode> &gauss) {
   using namespace dashmm; 
@@ -208,8 +212,8 @@ void AFMPB::generateMesh(int s, std::vector<Atom> &molecule,
   const int min_polar_intervals = 5; 
 
   const double scale = 1.0 / 0.985; 
-  Atom &S = molecule[s]; 
-  Point &center = S.position; 
+  const Atom &S = molecule[s]; 
+  const Point &center = S.position; 
   double radius = S.radius; 
   std::vector<int> intersected; 
 
@@ -224,14 +228,14 @@ void AFMPB::generateMesh(int s, std::vector<Atom> &molecule,
   }
 
   // Number of intervals used to divide polar angle theta
-  int n = radius * sqrt(2 * M_PI * mesh_density_); 
+  int n = radius * sqrt(2.0 * M_PI * mesh_density_); 
   n = std::min(max_polar_intervals, std::max(n, min_polar_intervals)); 
 
   // Number of intervals used to divide azimuthal angle beta
   int m = 2 * n; 
 
-  double dbeta = 2 * M_PI / m; 
-  double area = 4 * radius * M_PI / n / m * scale; 
+  double dbeta = 2.0 * M_PI / m; 
+  double area = 4.0 * radius * radius * M_PI / n / m * scale; 
 
   std::unique_ptr<double []> theta{new double[n + 1]}; 
   std::unique_ptr<double []> thetaBar{new double[n]}; 
@@ -239,12 +243,12 @@ void AFMPB::generateMesh(int s, std::vector<Atom> &molecule,
 
   theta[0] = -M_PI / 2; 
   for (int i = 1; i <= n; ++i) 
-    theta[i] = asin(-1 + 2 * i / n); 
+    theta[i] = asin(-1 + 2.0 * i / n); 
 
   thetaBar[0] = (theta[0] + 2 * theta[1]) / 3; 
   for (int i = 1; i <= n - 2; ++i) 
     thetaBar[i] = (theta[i] + theta[i + 1]) / 2; 
-  thetaBar[n - 1] = (theta[n - 1] + 2 * theta[n]) / 3; 
+  thetaBar[n - 1] = (2 * theta[n - 1] + theta[n]) / 3; 
 
   for (int i = 0; i < m; ++i) 
     beta[i] = i * dbeta; 
@@ -664,7 +668,6 @@ void AFMPB::evaluateGaussianPoint() {
 
 double AFMPB::totalFreeEnergy(const GNode *gauss, int ngauss, 
                               const Node *nodes, int nnodes) const {
-
   double b = 0; 
 
   if (mesh_format_) {
@@ -680,8 +683,8 @@ double AFMPB::totalFreeEnergy(const GNode *gauss, int ngauss,
           nodes[i2].value[0] * xi_[j] + nodes[i3].value[0] * eta_[j];
         double h = nodes[i1].value[1] * zeta + 
           nodes[i2].value[1] * xi_[j] + nodes[i3].value[1] * eta_[j]; 
-        temp += (gauss[index + j].value[0] * h * dielectric_ - 
-                 gauss[index + j].value[1] * f) * weight_[j]; 
+        temp += (gauss[index + j].rhs[0] * h * dielectric_ - 
+                 gauss[index + j].rhs[1] * f) * weight_[j]; 
       }
       b += temp * e.area; 
     }
@@ -691,8 +694,8 @@ double AFMPB::totalFreeEnergy(const GNode *gauss, int ngauss,
     // When using built-in mesh, the number of Gaussian quadrature points is the
     // same as the number of nodes of the surface mesh 
     for (int i = 0; i < ngauss; ++i) {
-      b += (gauss[i].value[0] * nodes[i].value[1] * dielectric_ - 
-             gauss[i].value[1] * nodes[i].value[0] * nodes[i].area) / 2; 
+      b += (gauss[i].rhs[0] * nodes[i].value[1] * dielectric_ -
+            gauss[i].rhs[1] * nodes[i].value[0] * nodes[i].area) / 2; 
     }
     
     b /= 4 * M_PI / 0.985; 
@@ -703,10 +706,9 @@ double AFMPB::totalFreeEnergy(const GNode *gauss, int ngauss,
 
 void AFMPB::setup() {
   auto molecule = readAtoms(); 
-  /*
-  int err = atoms_.allocate(natoms_, molecule.data()); 
+  int err = atoms_.allocate(natoms_, molecule); 
   assert(err == dashmm::kSuccess); 
-  */
+
   std::vector<Node> nodes; 
   std::vector<GNode> gauss; 
 
@@ -719,28 +721,69 @@ void AFMPB::setup() {
     processElementGeometry(nodes);  
     generateGaussianPoint(nodes, gauss); 
   }
-  
-  /*
+
   nnodes_ = nodes.size(); 
-  err = nodes_.allocate(nnodes_, nodes.data()); 
+  err = nodes_.allocate(nnodes_); 
+  assert(err == dashmm::kSuccess); 
+  err = nodes_.put(0, nnodes_, nodes.data()); 
   assert(err == dashmm::kSuccess); 
 
   ngauss_ = gauss.size(); 
-  err = gauss_.allocate(ngauss_, gauss.data()); 
+  err = gauss_.allocate(ngauss_); 
   assert(err == dashmm::kSuccess); 
-  */
+  err = gauss_.put(0, ngauss_, gauss.data()); 
+  assert(err == dashmm::kSuccess); 
 
   log_ << "\n----------------------------------------------------------------\n"
        << "*      Adaptive Fast Multipole Poisson Boltzmann Solver        *\n"
-       <<  "----------------------------------------------------------------\n\n";
+       << "----------------------------------------------------------------\n\n"
+       << "Problem parameters:\n"
+       << std::setw(50) << std::left << "... n_atoms:" 
+       << std::setw(14) << std::right << natoms_ << "\n"
+       << std::setw(50) << std::left << "... n_elements:" 
+       << std::setw(14) << std::right << elements_.size() << "\n"
+       << std::setw(50) << std::left << "... n_nodes:" 
+       << std::setw(14) << std::right << nnodes_ << "\n"
+       << std::setw(50) << std::left << "... Area: " 
+       << std::setw(14) << std::right << std::setprecision(5) 
+       << std::scientific << area_ << "\n"
+       << std::setw(50) << std::left << "... Volume: "
+       << std::setw(14) << std::right << std::setprecision(5) 
+       << std::scientific << volume_ << "\n"
+       << std::setw(50) << std::left << "... Kap: "
+       << std::setw(14) << std::right << std::setprecision(5) 
+       << std::scientific << kap_ << "\n";
+
+  dashmm::FMM97<Atom, GNode, dashmm::AFMPBRHS> method{};
+  std::vector<double> kparam{}; 
+  err = interp.evaluate(atoms_, gauss_, refine_limit_, &method, 
+                        accuracy_, &kparam);
+  assert(err == dashmm::kSuccess);  
 }
 
 void AFMPB::solve() {
+  // Compute the right-hand side of the linear system
+  dashmm::FMM97<Atom, Node, dashmm::AFMPBRHS> m_rhs{}; 
+  std::vector<double> kparam_rhs{}; 
+  auto err = rhs.evaluate(atoms_, nodes_, refine_limit_, &m_rhs, 
+                          accuracy_, &kparam_rhs); 
+  assert(err == dashmm::kSuccess); 
+
+  {
+    auto temp = nodes_.collect();
+  assert(err == dashmm::kSuccess); 
+  }
+
+  // Test the matrix-vector multiply of the left-hand side
+
+
+  // Note: in the orginal code, the vector returned from GMRES needs to be 
+  // multiplied by 0.79577e72e-1 * area_i for the unknowns defined on node i
+
 
 }
 
 void AFMPB::collect() {
-  /*
   auto gauss = gauss_.collect(); 
   auto nodes = nodes_.collect(); 
   
@@ -782,7 +825,6 @@ void AFMPB::collect() {
       potential_ << e.nodes[0] << " " << e.nodes[1] << " " << e.nodes[2] << "\n";
     }
   } 
-  */ 
 }
 
 } // namespace afmpb

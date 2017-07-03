@@ -49,15 +49,16 @@ struct Patch {
 
 struct Node {
   Node() { }
-  int index;                // Index of the node
-  dashmm::Point position;   // Position of the node 
-  dashmm::Point normal_i;   // Inner normal derivative of the node
-  dashmm::Point normal_o;   // Outer normal derivative of the node 
-  std::vector<Patch> patch; // Node-patch 
-  double area;              // Area of the patch for the node 
-  double projected;         // Projected area 
-  double charge[2];         // Input to the matrix-vector multiply
-  double value[2];          // Result of the matrix-vector multiply
+  int index;                        // Index of the node
+  dashmm::Point position;           // Position of the node 
+  dashmm::Point normal_i;           // Inner normal derivative of the node
+  dashmm::Point normal_o;           // Outer normal derivative of the node 
+  std::vector<Patch> patch;         // Node-patch 
+  double area = 0.0;                // Area of the patch for the node 
+  double projected = 0.0;           // Projected area 
+  double rhs[2] = {0.0};            // AFMPBRHS expansion result 
+  double charge[2] = {0.0};         // Input to AFMPBLHS expansion
+  double value[2] = {0.0};          // Result of AFMPBLHS expansion
   std::map<int, std::vector<double>> cached; // Cached values for S_to_T
 }; 
 
@@ -76,7 +77,7 @@ struct GNode {
   int index; 
   dashmm::Point position;   
   dashmm::Point normal_o; 
-  double value[2];          
+  double rhs[2] = {0.0};  
 }; 
 
 class AFMPB {
@@ -89,12 +90,10 @@ public:
     if (mesh_.is_open())
       mesh_.close();
 
-    //assert(atoms_.destroy() == dashmm::kSuccess); 
-    //assert(gauss_.destroy() == dashmm::kSuccess); 
-
-    /*
+    assert(atoms_.destroy() == dashmm::kSuccess); 
+    assert(gauss_.destroy() == dashmm::kSuccess); 
     assert(nodes_.destroy() == dashmm::kSuccess); 
-    */
+
     if (!mesh_format_) {
       delete [] xi_; 
       delete [] eta_; 
@@ -110,8 +109,8 @@ public:
 
 private: 
   void processPQRFile(std::string &pqr_file); 
-  std::vector<Atom> readAtoms(); 
-  void generateMesh(int s, std::vector<Atom> &molecule, 
+  Atom *readAtoms(); 
+  void generateMesh(int s, const Atom *molecule,
                     std::vector<Node> &nodes, 
                     std::vector<GNode> &gauss); 
   void readMesh(std::vector<Node> &nodes); 
@@ -136,6 +135,7 @@ private:
   double surface_tension_; 
   double pressure_; 
   int accuracy_; 
+  int refine_limit_; 
 
   // Parameters for node-patch 
   double cut1_; 

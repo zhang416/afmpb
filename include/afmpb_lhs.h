@@ -164,11 +164,12 @@ class AFMPBLHS {
     dcomplex_t *M4 = reinterpret_cast<dcomplex_t *>(ret->views_.view_data(3)); 
 
     for (auto i = first; i != last; ++i) {
+      double scale = i->area * 0.79577472e-1; 
       Point dist = point_sub(i->position, center); 
-      lap_s_to_m(dist, i->charge[0], scale_l, M1); 
-      dlap_s_to_m(dist, i->charge[0], scale_l, i->normal_i, M2); 
-      yuk_s_to_m(dist, i->charge[1], scale_y, M3); 
-      dyuk_s_to_m(dist, i->charge[1], scale_y, i->normal_i, M4); 
+      lap_s_to_m(dist, i->charge[0] * scale, scale_l, M1); 
+      dlap_s_to_m(dist, i->charge[0] * scale, scale_l, i->normal_i, M2); 
+      yuk_s_to_m(dist, i->charge[1] * scale, scale_y, M3); 
+      dyuk_s_to_m(dist, i->charge[1] * scale, scale_y, i->normal_i, M4); 
     }
     return std::unique_ptr<expansion_t>{ret};
   }
@@ -186,11 +187,12 @@ class AFMPBLHS {
     dcomplex_t *L4 = reinterpret_cast<dcomplex_t *>(ret->views_.view_data(3));
 
     for (auto i = first; i != last; ++i) {
+      double scale = i->area * 0.79577472e-1; 
       Point dist = point_sub(i->position, center); 
-      lap_s_to_l(dist, i->charge[0], scale_l, L1);
-      dlap_s_to_l(dist, i->charge[0], scale_l, i->normal_i, L2); 
-      yuk_s_to_l(dist, i->charge[1], scale_y, L3); 
-      dyuk_s_to_l(dist, i->charge[1], scale_y, i->normal_i, L4); 
+      lap_s_to_l(dist, i->charge[0] * scale, scale_l, L1);
+      dlap_s_to_l(dist, i->charge[0] * scale, scale_l, i->normal_i, L2); 
+      yuk_s_to_l(dist, i->charge[1] * scale, scale_y, L3); 
+      dyuk_s_to_l(dist, i->charge[1] * scale, scale_y, i->normal_i, L4); 
     }
     return std::unique_ptr<expansion_t>{ret};
   }
@@ -283,35 +285,37 @@ class AFMPBLHS {
       f += DY[0] * 8 * lambda; 
       h -= 8 * lambda * (DY[1] * nx + DY[2] * ny + DY[3] * nz) / dielectric;
 
-      i->value[0] += f; 
-      i->value[1] += h; 
+      i->value[0] += f * dielectric; 
+      i->value[1] += h * dielectric; 
     }
   }
 
   void S_to_T(Source *s_first, Source *s_last,
               Target *t_first, Target *t_last) const {  
     int key = s_first->index; 
+    double dielectric = builtin_afmpb_table_->dielectric(); 
 
     for (auto i = t_first; i != t_last; ++i) {
       double f = 0, h = 0; 
       auto it = i->cached.find(key); 
-      std::vector<double> table; 
+      std::vector<double> tbl; 
 
       if (it != i->cached.end()) {
-        table = it->second; 
+        tbl = it->second; 
       } else {
         // Generate table 
-        generate_direct_table(i, s_first, s_last, table); 
-        i->cached[key] = table;
+        generate_direct_table(i, s_first, s_last, tbl); 
+        i->cached[key] = tbl;
       }
 
       for (auto j = s_first, k = 0; j != s_last; ++j, k += 4) {
-        f += table[k] * j->charge[1] + table[k + 1] * j->charge[0]; 
-        h += table[k + 2] * j->charge[1] + table[k + 3] * j->charge[0];
+        double scale = j->area * 0.79577472e-1; 
+        f += (tbl[k] * j->charge[1] + tbl[k + 1] * j->charge[0]) * scale; 
+        h += (tbl[k + 2] * j->charge[1] + tbl[k + 3] * j->charge[0]) * scale;
       }
 
-      i->value[0] += f;
-      i->value[1] += h;
+      i->value[0] += f * dielectric;
+      i->value[1] += h * dielectric;
     }
   }
 

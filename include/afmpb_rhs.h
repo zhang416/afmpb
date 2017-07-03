@@ -148,8 +148,8 @@ class AFMPBRHS {
     for (auto i = first; i != last; ++i) {
       Point dist = point_sub(i->position, views_.center()); 
       auto result = lap_m_to_t(dist, scale, M, true); 
-      i->value[0] += result[0]; 
-      i->value[1] += (result[1] * i->normal_o.x() + result[2] * i->normal_o.y() 
+      i->rhs[0] += result[0]; 
+      i->rhs[1] += (result[1] * i->normal_o.x() + result[2] * i->normal_o.y() 
                       + result[3] * i->normal_o.z()); 
     }
   }
@@ -161,8 +161,8 @@ class AFMPBRHS {
     for (auto i = first; i != last; ++i) {
       Point dist = point_sub(i->position, views_.center()); 
       auto result = lap_l_to_t(dist, scale, L, true); 
-      i->value[0] += result[0]; 
-      i->value[1] += (result[1] * i->normal_o.x() + result[2] * i->normal_o.y() 
+      i->rhs[0] += result[0]; 
+      i->rhs[1] -= (result[1] * i->normal_o.x() + result[2] * i->normal_o.y() 
                       + result[3] * i->normal_o.z()); 
     }
   }
@@ -182,8 +182,8 @@ class AFMPBRHS {
           fz += temp * s2t.z();
         }
       }
-      i->value[0] += potential; 
-      i->value[1] += (fx * i->normal_o.x() + fy * i->normal_o.y() + 
+      i->rhs[0] += potential; 
+      i->rhs[1] -= (fx * i->normal_o.x() + fy * i->normal_o.y() + 
                       fz * i->normal_o.z()); 
     }
   }
