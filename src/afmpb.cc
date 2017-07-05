@@ -11,9 +11,17 @@
 
 namespace afmpb {
 
+void set_rhs(Node *n, const size_t count, const double *dielectric) {
+  for (int i = 0; i < count; ++i) {
+    n[i].charge[0] = n[i].rhs[0] / (*dielectric); 
+    n[i].charge[1] = n[i].rhs[1] / (*dielectric);
+  }
+}
+
 dashmm::Evaluator<Atom, GNode, dashmm::AFMPBRHS, dashmm::FMM97> interp{}; 
 dashmm::Evaluator<Atom, Node, dashmm::AFMPBRHS, dashmm::FMM97> rhs{};
 dashmm::Evaluator<Node, Node, dashmm::AFMPBLHS, dashmm::FMM97NL3> lhs{}; 
+dashmm::ArrayMapAction<Node, double> rhs_action{set_rhs}; 
 
 void usage(char *program) {
   fprintf(stdout, "usage: %s (--pqr-file=FILE)\n"
@@ -28,6 +36,7 @@ void usage(char *program) {
           "  [--log-file=FILE                   [default:     output.txt]]\n"
           "  [--surface-potential-file=FILE     [default:  potential.txt]]\n"
           "  [--accuracy=num                    [default:              3]]\n"
+          "  [--restart=num                     [default:             50]]\n"
           , program);
 }
 
@@ -52,6 +61,7 @@ std::unique_ptr<Configuration> init(int argc, char **argv) {
     {"surface-tension", required_argument, 0, 'g'}, 
     {"pressure", required_argument, 0, 'p'}, 
     {"accuracy", required_argument, 0, 'a'}, 
+    {"restart", required_argument, 0, 'k'}, 
     {"help", no_argument, 0, 'h'}, 
     {0, 0, 0, 0}
   };
@@ -105,6 +115,9 @@ std::unique_ptr<Configuration> init(int argc, char **argv) {
     case 'a':
       p->accuracy = atoi(optarg); 
       break; 
+    case 'k':
+      p->restart = atoi(optarg); 
+      break;
     case 'h':
     case '?':
       usage(argv[0]); 
@@ -139,12 +152,15 @@ AFMPB::AFMPB(std::unique_ptr<Configuration> p) {
   mesh_format_ = p->mesh_format; 
   mesh_density_ = p->mesh_density; 
   probe_radius_ = p->probe_radius; 
+  dielectric_exterior_ = p->dielectric_exterior; 
+  dielectric_interior_ = p->dielectric_interior; 
   dielectric_ = p->dielectric_exterior / p->dielectric_interior; 
   kap_ = sqrt(2.528639884 * std::max(p->ion_concentration, 1e-10) / 
-              dielectric_ / p->temperature); 
+              p->dielectric_exterior / p->temperature); 
   surface_tension_ = p->surface_tension; 
   pressure_ = p->pressure; 
   accuracy_ = p->accuracy; 
+  restart_ = p->restart; 
 
   // Only 3-/6-digit accuracy are supported. For threshold, 40 is used for
   // 3-digit accuracy and 80 is used for 6-digit accuracy. 
@@ -768,14 +784,29 @@ void AFMPB::solve() {
   auto err = rhs.evaluate(atoms_, nodes_, refine_limit_, &m_rhs, 
                           accuracy_, &kparam_rhs); 
   assert(err == dashmm::kSuccess); 
+  nodes_.map(rhs_action, &dielectric_exterior_); 
 
   {
     auto temp = nodes_.collect();
-  assert(err == dashmm::kSuccess); 
+    assert(err == dashmm::kSuccess); 
   }
 
   // Test the matrix-vector multiply of the left-hand side
-
+  dashmm::FMM97NL3<Node, Node, dashmm::AFMPBLHS> m_lhs{};
+  std::vector<double> kparam_lhs;
+  kparam_lhs.push_back(kap_); 
+  kparam_lhs.push_back(dielectric_); 
+  kparam_lhs.push_back(cut1_); 
+  kparam_lhs.push_back(cut2_);
+  kparam_lhs.push_back(sigma_); 
+  err = lhs.evaluate(nodes_, nodes_, refine_limit_, &m_lhs, 
+                     accuracy_, &kparam_lhs); 
+  assert(err == dashmm::kSuccess); 
+  
+  {
+    auto temp = nodes_.collect(); 
+    assert(err == dashmm::kSuccess);
+  }
 
   // Note: in the orginal code, the vector returned from GMRES needs to be 
   // multiplied by 0.79577e72e-1 * area_i for the unknowns defined on node i

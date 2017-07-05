@@ -25,6 +25,7 @@ struct Configuration {
   double surface_tension = 0.005; 
   double pressure = 0.035; 
   int accuracy = 3;
+  int restart = 50; 
 }; 
 
 // Initialize AFMPB 
@@ -130,12 +131,15 @@ private:
   int mesh_format_; 
   double mesh_density_; 
   double probe_radius_; 
+  double dielectric_interior_; 
+  double dielectric_exterior_; 
   double dielectric_; 
   double kap_; 
   double surface_tension_; 
   double pressure_; 
   int accuracy_; 
   int refine_limit_; 
+  int restart_; 
 
   // Parameters for node-patch 
   double cut1_; 
