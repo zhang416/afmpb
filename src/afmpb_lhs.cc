@@ -33,6 +33,9 @@ void dlap_s_to_m(Point dist, double q, double scale, Point normal,
   for (int j = 1; j <= p; ++j) 
     powers_ephi[j] = powers_ephi[j - 1] * ephi;
 
+  // Compute legendre polynomial 
+  legendre_Plm(p, ctheta, legendre.data()); 
+
   dcomplex_t z1{normal[0], -normal[1]}; 
   dcomplex_t z2{normal[0], normal[1]}; 
 
@@ -174,63 +177,67 @@ void dyuk_s_to_m(Point dist, double q, double scale, Point normal,
 
   for (int n = 1; n <= p; ++n) {
     int m = 1; 
-    M[midx(n - 1, m - 1)] += n * (n + 1) * scale * q * bessel[n] * 
-      sqf[n - m] / sqf[n + m] * legendre[midx(n, m)] * lambda / (2.0 * n + 1) 
-      * real(z2 * powers_ephi[m]);
+    dcomplex_t temp = q * bessel[n] * sqf[midx(n, m)] * 
+      legendre[midx(n, m)] * lambda / (2.0 * n + 1) * powers_ephi[m]; 
+    M[midx(n - 1, m - 1)] += ((double) n * (n + 1)) * scale * 
+      real(z2 * temp); 
   }
 
   for (int n = 1; n <= p - 1; ++n) {
     int m = 1; 
-    M[midx(n + 1, m - 1)] -= n * (n + 1) / scale * q * bessel[n] * sqf[n - m] / 
-      sqf[n + m] * legendre[midx(n, m)] * lambda / (2.0 + n + 1) * 
-      real(z2 * powers_ephi[m]);
+    dcomplex_t temp = q * bessel[n] * sqf[midx(n, m)] * 
+      legendre[midx(n, m)] * lambda / (2.0 * n + 1) * powers_ephi[m]; 
+    M[midx(n + 1, m - 1)] -= ((double) n * (n + 1)) / scale * 
+      real(z2 * temp);
   }
 
   for (int n = 2; n <= p; ++n) {
-    dcomplex_t temp = q * bessel[n] * lambda / (2.0 * n + 1) * scale / 2.0 * z2; 
     for (int m = 2; m <= n; ++m) {
-      M[midx(n - 1, m - 1)] += temp * sqf[n - m] / sqf[n + m] * 
-        legendre[midx(n, m)] * powers_ephi[m] * ((double) (n + m - 1) * (n + m)); 
+      dcomplex_t temp = q * bessel[n] * sqf[midx(n, m)] * 
+        legendre[midx(n, m)] * lambda / (2.0 * n + 1) * powers_ephi[m]; 
+      M[midx(n - 1, m - 1)] += temp * z2 / 2.0 * 
+        ((double) (n + m - 1) * (n + m)) * scale; 
     }
   }
 
   for (int n = 1; n <= p; ++n) {
-    double temp = q * bessel[n] * lambda / (2.0 * n + 1) * normal[2] * scale; 
     for (int m = 0; m <= n - 1; ++m) {
-      M[midx(n - 1, m)] -= temp * sqf[n - m] / sqf[n + m] * 
-        legendre[midx(n, m)] * powers_ephi[m] * ((double) (n + m)); 
+      dcomplex_t temp = q * bessel[n] * sqf[midx(n, m)] * 
+        legendre[midx(n, m)] * lambda / (2.0 * n + 1) * powers_ephi[m]; 
+      M[midx(n - 1, m)] -= temp * normal[2] * ((double) (n + m)) * scale; 
     }
   }
 
   for (int n = 2; n <= p; ++n) {
-    dcomplex_t temp = q * bessel[n] * lambda / (2.0 * n + 1) / 2.0 * scale * z1; 
     for (int m = 0; m <= n - 2; ++m) {
-      M[midx(n - 1, m + 1)] -= temp * sqf[n - m] / sqf[n + m] * 
-        legendre[midx(n, m)] * powers_ephi[m]; 
+      dcomplex_t temp = q * bessel[n] * sqf[midx(n, m)] * 
+        legendre[midx(n, m)] * lambda / (2.0 * n + 1) * powers_ephi[m]; 
+      M[midx(n - 1, m + 1)] -= temp * z1 / 2.0 * scale; 
     }
   }
 
   for (int n = 2; n <= p - 1; ++n) {
-    dcomplex_t temp = q * bessel[n] * lambda / (2.0 * n + 1) / 2.0 / scale * z2;
     for (int m = 2; m <= n; ++m) {
-      M[midx(n + 1, m - 1)] -= temp * sqf[n - m] / sqf[n + m] * powers_ephi[m] * 
-        legendre[midx(n, m)] * ((double) (n - m + 1) * (n - m + 2)); 
+      dcomplex_t temp = q * bessel[n] * sqf[midx(n, m)] * 
+        legendre[midx(n, m)] * lambda / (2.0 * n + 1) * powers_ephi[m]; 
+      M[midx(n + 1, m - 1)] -= temp * z2 / 2.0 * 
+        ((double) (n - m + 1) * (n - m + 2)) / scale; 
     }
   }
 
   for (int n = 0; n <= p - 1; ++n) {
-    double temp = q * bessel[n] * lambda / (2.0 * n + 1) * normal[2] / scale;
     for (int m = 0; m <= n; ++m) {
-      M[midx(n + 1, m)] -= temp * sqf[n - m] / sqf[n + m] * 
-        legendre[midx(n, m)] * powers_ephi[m] * ((double) (n + 1 - m)); 
+      dcomplex_t temp = q * bessel[n] * sqf[midx(n, m)] * 
+        legendre[midx(n, m)] * lambda / (2.0 * n + 1) * powers_ephi[m]; 
+      M[midx(n + 1, m)] -= temp * normal[2] * ((double) (n - m + 1)) / scale; 
     }
   }
 
   for (int n = 0; n <= p - 1; ++n) {
-    dcomplex_t temp = q * bessel[n] * lambda / (2.0 * n + 1) * z1 / 2.0 * scale;      
     for (int m = 0; m <= n; ++m) {
-      M[midx(n + 1, m + 1)] += temp * sqf[n - m] / sqf[n + m] * 
-        legendre[midx(n, m)] * powers_ephi[m]; 
+      dcomplex_t temp = q * bessel[n] * sqf[midx(n, m)] * 
+        legendre[midx(n, m)] * lambda / (2.0 * n + 1) * powers_ephi[m]; 
+      M[midx(n + 1, m + 1)] += temp * z1 / 2.0 / scale; 
     }
   }
 }
@@ -271,63 +278,65 @@ void dyuk_s_to_l(Point dist, double q, double scale, Point normal,
 
   for (int n = 1; n <= p; ++n) {
     int m = 1; 
-    L[midx(n - 1, m - 1)] -= n * (n + 1) / scale * q * bessel[n] * 
-      sqf[n - m] / sqf[n + m] * legendre[midx(n, m)] * lambda / (2.0 * n + 1) 
-      * real(z2 * powers_ephi[m]);
+    dcomplex_t temp = q * bessel[n] * sqf[midx(n, m)] * legendre[midx(n, m)] * 
+      lambda / (2.0 * n + 1) * powers_ephi[m]; 
+    L[midx(n - 1, m - 1)] -= ((double) n * (n + 1)) * real(temp * z2) / scale; 
   }
 
   for (int n = 1; n <= p - 1; ++n) {
     int m = 1; 
-    L[midx(n + 1, m - 1)] += n * (n + 1) * scale * q * bessel[n] * 
-      sqf[n - m] / sqf[n + m] * legendre[midx(n, m)] * lambda / (2.0 * n + 1)
-      * real(z2 * powers_ephi[m]);
+    dcomplex_t temp = q * bessel[n] * sqf[midx(n, m)] * legendre[midx(n, m)] * 
+      lambda / (2.0 * n + 1) * powers_ephi[m]; 
+    L[midx(n + 1, m - 1)] += ((double) n * (n + 1)) * real(temp * z2) * scale; 
   }
 
   for (int n = 2; n <= p; ++n) {
-    dcomplex_t temp = q * bessel[n] * lambda / (2.0 * n + 1) * z2 / 2.0 / scale;
     for (int m = 2; m <= n; ++m) {
-      L[midx(n - 1, m - 1)] -= temp * sqf[n - m] / sqf[n + m] * powers_ephi[m] *
-        legendre[midx(n, m)] * ((double) (n + m - 1) * (n + m));
+      dcomplex_t temp = q * bessel[n] * sqf[midx(n, m)] * legendre[midx(n, m)] 
+        * lambda / (2.0 * n + 1) * powers_ephi[m]; 
+      L[midx(n - 1, m - 1)] -= temp * z2 / 2.0 * 
+        ((double) (n + m - 1) * (n + m)) / scale; 
     }
   }
 
   for (int n = 1; n <= p; ++n) {
-    dcomplex_t temp = q * bessel[n] * lambda / (2.0 * n + 1) * normal[2] / scale;
     for (int m = 0; m <= n - 1; ++m) {
-      L[midx(n - 1, m)] += temp * sqf[n - m] / sqf[n + m] * legendre[midx(n, m)] 
-        * powers_ephi[m] * ((double) (n + m)); 
+      dcomplex_t temp = q * bessel[n] * sqf[midx(n, m)] * legendre[midx(n, m)] 
+        * lambda / (2.0 * n + 1) * powers_ephi[m]; 
+      L[midx(n - 1, m)] += temp * normal[2] * ((double) (n + m)) / scale; 
     }
   }
 
   for (int n = 2; n <= p; ++n) {
-    dcomplex_t temp = q * bessel[n] * lambda / (2.0 * n + 1) * z1 / 2.0 / scale;
     for (int m = 0; m <= n - 2; ++m) {
-      L[midx(n - 1, m + 1)] += temp * sqf[n - m] / sqf[n + m] *         
-        legendre[midx(n, m)] * powers_ephi[m]; 
+      dcomplex_t temp = q * bessel[n] * sqf[midx(n, m)] * legendre[midx(n, m)] 
+        * lambda / (2.0 * n + 1) * powers_ephi[m]; 
+      L[midx(n - 1, m + 1)] += temp * z1 / 2.0 / scale; 
     }
   }
 
   for (int n = 2; n <= p - 1; ++n) {
-    dcomplex_t temp = q * bessel[n] * lambda / (2.0 * n + 1) * z2 / 2.0 * scale;
     for (int m = 2; m <= n; ++m) {
-      L[midx(n + 1, m - 1)] += temp * sqf[n - m] / sqf[n + m] * powers_ephi[m] *
-        legendre[midx(n, m)] * ((double) (n - m + 1) * (n - m + 2)); 
+      dcomplex_t temp = q * bessel[n] * sqf[midx(n, m)] * legendre[midx(n, m)] 
+        * lambda / (2.0 * n + 1) * powers_ephi[m]; 
+      L[midx(n + 1, m - 1)] += temp * z2 / 2.0 * 
+        ((double) (n - m + 1) * (n - m + 2)) * scale; 
     }
   }
 
   for (int n = 0; n <= p - 1; ++n) {
-    double temp = q * bessel[n] * lambda / (2.0 * n + 1) * normal[2] * scale; 
     for (int m = 0; m <= n; ++m) {
-      L[midx(n + 1, m)] += temp * sqf[n - m] / sqf[n + m] * 
-        legendre[midx(n, m)] * powers_ephi[m] * ((double) (n + 1 - m)); 
+      dcomplex_t temp = q * bessel[n] * sqf[midx(n, m)] * legendre[midx(n, m)] 
+        * lambda / (2.0 * n + 1) * powers_ephi[m]; 
+      L[midx(n + 1, m)] += temp * normal[2] * ((double) (n - m + 1)) * scale; 
     }
   }
 
   for (int n = 0; n <= p - 1; ++n) {
-    dcomplex_t temp = q * bessel[n] * lambda / (2.0 * n + 1) * z1 / 2.0 * scale; 
     for (int m = 0; m <= n; ++m) {
-      L[midx(n + 1, m + 1)] -= temp * sqf[n - m] / sqf[n + m] * 
-        legendre[midx(n, m)] * powers_ephi[m]; 
+      dcomplex_t temp = q * bessel[n] * sqf[midx(n, m)] * legendre[midx(n, m)] 
+        * lambda / (2.0 * n + 1) * powers_ephi[m]; 
+      L[midx(n + 1, m + 1)] -= temp * z1 / 2.0 * scale; 
     }
   }
 }

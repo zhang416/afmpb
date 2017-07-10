@@ -162,9 +162,9 @@ AFMPB::AFMPB(std::unique_ptr<Configuration> p) {
   accuracy_ = p->accuracy; 
   restart_ = p->restart; 
 
-  // Only 3-/6-digit accuracy are supported. For threshold, 40 is used for
+  // Only 3-/6-digit accuracy are supported. For threshold, 50 is used for
   // 3-digit accuracy and 80 is used for 6-digit accuracy. 
-  refine_limit_ = (accuracy_ == 3 ? 40 : 80); 
+  refine_limit_ = (accuracy_ == 3 ? 50 : 80); 
 
   if (mesh_format_ == 0) {
     cut1_ = 0.1; 

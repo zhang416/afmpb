@@ -167,10 +167,10 @@ class AFMPBLHS {
     for (auto i = first; i != last; ++i) {
       double scale_c = i->area * 0.79577472e-1; 
       Point dist = point_sub(i->position, center); 
-      //lap_s_to_m(dist, i->charge[1] * scale_c, scale_l, M1); 
-      //dlap_s_to_m(dist, i->charge[0] * scale_c, scale_l, i->normal_i, M2); 
-      //yuk_s_to_m(dist, i->charge[1] * scale_c, scale_y, M3); 
-      //dyuk_s_to_m(dist, i->charge[0] * scale_c, scale_y, i->normal_i, M4); 
+      lap_s_to_m(dist, i->charge[1] * scale_c, scale_l, M1); 
+      dlap_s_to_m(dist, i->charge[0] * scale_c, scale_l, i->normal_i, M2); 
+      yuk_s_to_m(dist, i->charge[1] * scale_c, scale_y, M3); 
+      dyuk_s_to_m(dist, i->charge[0] * scale_c, scale_y, i->normal_i, M4); 
     }
     return std::unique_ptr<expansion_t>{ret};
   }
@@ -190,10 +190,10 @@ class AFMPBLHS {
     for (auto i = first; i != last; ++i) {
       double scale_c = i->area * 0.79577472e-1; 
       Point dist = point_sub(i->position, center); 
-      //lap_s_to_l(dist, i->charge[1] * scale_c, scale_l, L1);
-      //dlap_s_to_l(dist, i->charge[0] * scale_c, scale_l, i->normal_i, L2); 
-      //yuk_s_to_l(dist, i->charge[1] * scale_c, scale_y, L3); 
-      //dyuk_s_to_l(dist, i->charge[0] * scale_c, scale_y, i->normal_i, L4); 
+      lap_s_to_l(dist, i->charge[1] * scale_c, scale_l, L1);
+      dlap_s_to_l(dist, i->charge[0] * scale_c, scale_l, i->normal_i, L2); 
+      yuk_s_to_l(dist, i->charge[1] * scale_c, scale_y, L3); 
+      dyuk_s_to_l(dist, i->charge[0] * scale_c, scale_y, i->normal_i, L4); 
     }
     return std::unique_ptr<expansion_t>{ret};
   }
@@ -273,7 +273,7 @@ class AFMPBLHS {
 
       // Double layer Laplace 
       auto DL = lap_l_to_t(dist, scale_l, L2, true); 
-      f -= DL[0] / 4 / M_PI / dielectric;
+      f -= DL[0] / dielectric * 4 * M_PI;
       h -= 4 * M_PI * (DL[1] * nx + DL[2] * ny + DL[3] * nz) / dielectric;
 
       // Single layer Yukawa 
@@ -336,10 +336,12 @@ class AFMPBLHS {
 
   std::unique_ptr<expansion_t> I_to_I(Index s_index, Index t_index) const {
     ViewSet views{kTargetIntermediate}; 
+    double scale = views_.scale(); 
+
     lap_i_to_i(s_index, t_index, views_, 0, 0, views); 
     lap_i_to_i(s_index, t_index, views_, 6, 28, views); 
-    yuk_i_to_i(s_index, t_index, views_, 12, 56, views); 
-    yuk_i_to_i(s_index, t_index, views_, 18, 84, views); 
+    yuk_i_to_i(s_index, t_index, views_, 12, 56, scale, views); 
+    yuk_i_to_i(s_index, t_index, views_, 18, 84, scale, views); 
 
     expansion_t *ret = new expansion_t{views};
     return std::unique_ptr<expansion_t>{ret};
@@ -353,10 +355,14 @@ class AFMPBLHS {
     dcomplex_t *L3 = reinterpret_cast<dcomplex_t *>(ret->views_.view_data(2));
     dcomplex_t *L4 = reinterpret_cast<dcomplex_t *>(ret->views_.view_data(3));
 
-    lap_i_to_l(views_, 0, t_index, L1); 
-    lap_i_to_l(views_, 28, t_index, L2); 
-    yuk_i_to_l(views_, 56, t_index, L3); 
-    yuk_i_to_l(views_, 84, t_index, L4); 
+    double scale_y = views_.scale(); 
+    int level = builtin_yukawa_table_->level(scale_y); 
+    double scale_l = builtin_laplace_table_->scale(level); 
+
+    lap_i_to_l(views_, 0, t_index, scale_l * 2.0, L1); 
+    lap_i_to_l(views_, 28, t_index, scale_l * 2.0, L2); 
+    yuk_i_to_l(views_, 56, t_index, scale_y / 2.0, L3); 
+    yuk_i_to_l(views_, 84, t_index, scale_y / 2.0, L4); 
 
     return std::unique_ptr<expansion_t>(ret);
   }

@@ -206,7 +206,8 @@ class AFMPBRHS {
     // t_index is the index of the child
     expansion_t *retval{new expansion_t{kTargetPrimary}};
     dcomplex_t *L = reinterpret_cast<dcomplex_t *>(retval->views_.view_data(0));
-    lap_i_to_l(views_, 0, t_index, L); 
+    double scale = views_.scale() * 2; 
+    lap_i_to_l(views_, 0, t_index, scale, L); 
     return std::unique_ptr<expansion_t>(retval);
   }
 
