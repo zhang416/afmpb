@@ -58,6 +58,8 @@ struct Node {
   double area = 0.0;                // Area of the patch for the node 
   double projected = 0.0;           // Projected area 
   double rhs[2] = {0.0};            // AFMPBRHS expansion result 
+  std::vector<double> gmres;        // GMRES working buffer, including
+                                    // input, output, and Krylov basis
   double charge[2] = {0.0};         // Input to AFMPBLHS expansion
   double value[2] = {0.0};          // Result of AFMPBLHS expansion
   std::map<int, std::vector<double>> cached; // Cached values for S_to_T

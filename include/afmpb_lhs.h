@@ -28,24 +28,32 @@ void dyuk_s_to_l(Point dist, double q, double scale, Point normal,
 
 class AFMPBTable {
 public: 
-  AFMPBTable(double dielectric, double cut1, double cut2, double sigma) 
-    : dielectric_{dielectric}, cut1_{cut1}, cut2_{cut2}, sigma_{sigma} { }
+  AFMPBTable(double dielectric, double cut1, double cut2, 
+             double sigma, int restart) 
+    : dielectric_{dielectric}, cut1_{cut1}, cut2_{cut2}, 
+    sigma_{sigma}, restart_{restart} { }
   double dielectric() const {return dielectric_;}
   double cut1() const {return cut1_;}
   double cut2() const {return cut2_;}
   double sigma() const {return sigma_;}
+  int s_iter() const {return iter_;} 
+  int t_iter() const {return (iter_ + 1) % restart_;} 
+  void resetIter() {iter_ = 0;}
+  void increIter() {iter_++;} 
 
 private:
   double dielectric_; 
   double cut1_; 
   double cut2_;
   double sigma_;
+  int restart_; 
+  int iter_ = 0; 
 };
 
 extern std::unique_ptr<AFMPBTable> builtin_afmpb_table_; 
 
 void update_afmpb_table(double dielectric, double cut1, double cut2, 
-                        double sigma); 
+                        double sigma, int restart); 
 
 template <typename Source, typename Target>
 class AFMPBLHS {
@@ -157,6 +165,7 @@ class AFMPBLHS {
     double scale_y = views_.scale(); 
     int level = builtin_yukawa_table_->level(scale_y); 
     double scale_l = builtin_laplace_table_->scale(level);    
+    int iter = builtin_afmpb_table_->s_iter(); 
 
     expansion_t *ret{new expansion_t{kSourcePrimary, scale_y, center}};
     dcomplex_t *M1 = reinterpret_cast<dcomplex_t *>(ret->views_.view_data(0));
@@ -167,10 +176,19 @@ class AFMPBLHS {
     for (auto i = first; i != last; ++i) {
       double scale_c = i->area * 0.79577472e-1; 
       Point dist = point_sub(i->position, center); 
+      double q0 = i->gmres[2 * iter] * scale_c; 
+      double q1 = i->gmres[2 * iter + 1] * scale_c; 
+      /*
       lap_s_to_m(dist, i->charge[1] * scale_c, scale_l, M1); 
       dlap_s_to_m(dist, i->charge[0] * scale_c, scale_l, i->normal_i, M2); 
       yuk_s_to_m(dist, i->charge[1] * scale_c, scale_y, M3); 
       dyuk_s_to_m(dist, i->charge[0] * scale_c, scale_y, i->normal_i, M4); 
+      */
+      lap_s_to_m(dist, q1, scale_l, M1); 
+      dlap_s_to_m(dist, q0, scale_l, i->normal_i, M2); 
+      yuk_s_to_m(dist, q1, scale_y, M3); 
+      dyuk_s_to_m(dist, q0, scale_y, i->normal_i, M4); 
+
     }
     return std::unique_ptr<expansion_t>{ret};
   }
@@ -180,6 +198,7 @@ class AFMPBLHS {
     double scale_y = views_.scale();
     int level = builtin_yukawa_table_->level(scale_y); 
     double scale_l = builtin_laplace_table_->scale(level); 
+    int iter = builtin_afmpb_table_->s_iter(); 
 
     expansion_t *ret{new expansion_t{kTargetPrimary}};
     dcomplex_t *L1 = reinterpret_cast<dcomplex_t *>(ret->views_.view_data(0));
@@ -190,10 +209,18 @@ class AFMPBLHS {
     for (auto i = first; i != last; ++i) {
       double scale_c = i->area * 0.79577472e-1; 
       Point dist = point_sub(i->position, center); 
+      double q0 = i->gmres[2 * iter] * scale_c; 
+      double q1 = i->gmres[2 * iter + 1] * scale_c; 
+      /*
       lap_s_to_l(dist, i->charge[1] * scale_c, scale_l, L1);
       dlap_s_to_l(dist, i->charge[0] * scale_c, scale_l, i->normal_i, L2); 
       yuk_s_to_l(dist, i->charge[1] * scale_c, scale_y, L3); 
       dyuk_s_to_l(dist, i->charge[0] * scale_c, scale_y, i->normal_i, L4); 
+      */
+      lap_s_to_l(dist, q1, scale_l, L1);
+      dlap_s_to_l(dist, q0, scale_l, i->normal_i, L2); 
+      yuk_s_to_l(dist, q1, scale_y, L3); 
+      dyuk_s_to_l(dist, q0, scale_y, i->normal_i, L4); 
     }
     return std::unique_ptr<expansion_t>{ret};
   }
@@ -253,6 +280,7 @@ class AFMPBLHS {
     double scale_l = builtin_laplace_table_->scale(level); 
     double dielectric = builtin_afmpb_table_->dielectric(); 
     double lambda = builtin_yukawa_table_->lambda(); 
+    int iter = builtin_afmpb_table_->t_iter(); 
 
     dcomplex_t *L1 = reinterpret_cast<dcomplex_t *>(views_.view_data(0));
     dcomplex_t *L2 = reinterpret_cast<dcomplex_t *>(views_.view_data(1));
@@ -286,15 +314,19 @@ class AFMPBLHS {
       f += DY[0] * 8 * lambda; 
       h -= 8 * lambda * (DY[1] * nx + DY[2] * ny + DY[3] * nz) / dielectric;
 
-      i->value[0] += f; 
-      i->value[1] += h; 
+      //i->value[0] += f; 
+      //i->value[1] += h; 
+      i->gmres[2 * iter] += f; 
+      i->gmres[2 * iter + 1] += h; 
     }
   }
 
   void S_to_T(Source *s_first, Source *s_last,
               Target *t_first, Target *t_last) const {  
     int key = s_first->index; 
-
+    int s_iter = builtin_afmpb_table_->s_iter(); 
+    int t_iter = builtin_afmpb_table_->t_iter(); 
+    /*
     for (auto i = t_first; i != t_last; ++i) {
       double f = 0, h = 0; 
       auto it = i->cached.find(key); 
@@ -316,6 +348,31 @@ class AFMPBLHS {
       i->value[0] += f;
       i->value[1] += h;
     }
+    */
+
+    for (auto i = t_first; i != t_last; ++i) {
+      double f = 0, h = 0; 
+      auto it = i->cached.find(key); 
+      std::vector<double> tbl; 
+
+      if (it != i->cached.end()) {
+        tbl = it->second; 
+      } else {
+        // Generate table 
+        generate_direct_table(i, s_first, s_last, tbl); 
+        i->cached[key] = tbl;
+      }
+
+      for (auto j = s_first, k = 0; j != s_last; ++j, k += 4) {
+        double q0 = j->gmres[2 * s_iter]; 
+        double q1 = j->gmres[2 * s_iter + 1]; 
+        f += (tbl[k] * q1 + tbl[k + 1] * q0); 
+        h += (tbl[k + 2] * q1 + tbl[k + 3] * q0); 
+      }
+
+      i->gmres[2 * t_iter] += f; 
+      i->gmres[2 * t_iter + 1] += h;
+    }  
   }
 
   std::unique_ptr<expansion_t> M_to_I() const {
@@ -389,7 +446,8 @@ class AFMPBLHS {
     update_laplace_table(n_digits, domain_size); 
     update_yukawa_table(n_digits, domain_size, kernel_params[0]); 
     update_afmpb_table(kernel_params[1], kernel_params[2], 
-                       kernel_params[3], kernel_params[4]); 
+                       kernel_params[3], kernel_params[4], 
+                       ((int) kernel_params[5])); 
   }
 
   static void delete_table() { }

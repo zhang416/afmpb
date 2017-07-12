@@ -342,10 +342,10 @@ void dyuk_s_to_l(Point dist, double q, double scale, Point normal,
 }
 
 void update_afmpb_table(double dielectric, double cut1, double cut2, 
-                        double sigma) {
+                        double sigma, int restart) {
   if (builtin_afmpb_table_ == nullptr) 
     builtin_afmpb_table_ = std::unique_ptr<AFMPBTable>
-      {new AFMPBTable{dielectric, cut1, cut2, sigma}}; 
+      {new AFMPBTable{dielectric, cut1, cut2, sigma, restart}}; 
 }
 
 } // namespace dashmm 

@@ -15,6 +15,8 @@ void set_rhs(Node *n, const size_t count, const double *dielectric) {
   for (int i = 0; i < count; ++i) {
     n[i].charge[0] = n[i].rhs[0] / (*dielectric); 
     n[i].charge[1] = n[i].rhs[1] / (*dielectric);
+    n[i].gmres[0] = n[i].rhs[0] / (*dielectric); 
+    n[i].gmres[1] = n[i].rhs[1] / (*dielectric); 
   }
 }
 
@@ -368,6 +370,7 @@ void AFMPB::generateMesh(int s, const Atom *molecule,
       node.patch.emplace_back(Point{p4x, p4y, p4z}, Point{v14, v24, v34}, p3); 
 
       node.index = nodes.size(); 
+      node.gmres.resize(restart_ * 2); 
       nodes.push_back(node); 
     }
   }
@@ -507,6 +510,10 @@ void AFMPB::removeIsolatedNodes(std::vector<Node> &nodes) {
 
   int updated_count = nodes.size() - isolated.size(); 
   nodes.resize(updated_count); 
+
+  // Resize the gmres buffer for each remained node 
+  for (int i = 0; i < nodes.size(); ++i) 
+    nodes[i].gmres.resize(restart_ * 2); 
 }
 
 void AFMPB::processElementGeometry(std::vector<Node> &nodes) {
@@ -786,10 +793,12 @@ void AFMPB::solve() {
   assert(err == dashmm::kSuccess); 
   nodes_.map(rhs_action, &dielectric_exterior_); 
 
+  /*
   {
     auto temp = nodes_.collect();
     assert(err == dashmm::kSuccess); 
   }
+  */
 
   // Test the matrix-vector multiply of the left-hand side
   dashmm::FMM97NL3<Node, Node, dashmm::AFMPBLHS> m_lhs{};
@@ -799,18 +808,18 @@ void AFMPB::solve() {
   kparam_lhs.push_back(cut1_); 
   kparam_lhs.push_back(cut2_);
   kparam_lhs.push_back(sigma_); 
-  err = lhs.evaluate(nodes_, nodes_, refine_limit_, &m_lhs, 
-                     accuracy_, &kparam_lhs); 
-  assert(err == dashmm::kSuccess); 
-  
+  kparam_lhs.push_back(restart_); 
+
+  auto tree = lhs.create_tree(nodes_, nodes_, refine_limit_); 
+  auto dag = lhs.create_DAG(tree, accuracy_, &kparam_lhs, &m_lhs); 
+  err = lhs.execute_DAG(tree, dag.get()); 
+  err = lhs.destroy_DAG(tree, std::move(dag)); 
+  err = lhs.destroy_tree(tree); 
+
   {
     auto temp = nodes_.collect(); 
     assert(err == dashmm::kSuccess);
   }
-
-  // Note: in the orginal code, the vector returned from GMRES needs to be 
-  // multiplied by 0.79577e72e-1 * area_i for the unknowns defined on node i
-
 
 }
 
