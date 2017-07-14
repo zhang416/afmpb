@@ -79,6 +79,7 @@ void AFMPB::solve() {
     }
 
     if (computeApproxSolution) {
+      computeApproxSolution(); 
       if (!terminateLoop) 
         dashmm::builtin_afmpb_table_->increIter(); 
     } 
@@ -198,6 +199,9 @@ double AFMPB::updateResidualNorm() {
   residual_[k + 1] = -s * alpha; 
 
   return residual_[k + 1]; 
+}
+
+void AFMPB::computeApproxSolution() {
 }
 
 } // namespace afmpb

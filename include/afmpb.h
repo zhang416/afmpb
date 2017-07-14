@@ -134,6 +134,7 @@ private:
   void applyGivensRotation(); 
   void generateGivensRotation(double &x, double &y); 
   double updateResidualNorm(); 
+  void computeApproxSolution(); 
 
 private: 
   std::ifstream pqr_; 
