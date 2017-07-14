@@ -1,7 +1,6 @@
 #ifndef __AFMPB_H__
 #define __AFMPB_H__
 
-#include <iostream> //debug
 #include <fstream>
 #include <memory>
 #include <string>
@@ -9,6 +8,19 @@
 #include "dashmm/dashmm.h"
 
 namespace afmpb {
+
+struct Configuration; 
+struct Node; 
+
+extern hpx_action_t sum_ident_op_; 
+extern hpx_action_t sum_op_; 
+extern hpx_action_t allocate_reducer_; 
+extern hpx_action_t inner_product_; 
+
+void set_rhs(Node *n, const size_t count, const double *dielectric); 
+void set_r0(Node *n, const size_t count, const double *unused); 
+std::unique_ptr<Configuration> init(int argc, char **argv); 
+int finalize(); 
 
 struct Configuration {
   std::string pqr_file; 
@@ -26,13 +38,10 @@ struct Configuration {
   double pressure = 0.035; 
   int accuracy = 3;
   int restart = 50; 
+  int max_restart = 1; 
+  double rel_tolerance = 1e-5;
+  double abs_tolerance = 1e-5; 
 }; 
-
-// Initialize AFMPB 
-std::unique_ptr<Configuration> init(int argc, char **argv); 
-
-// Finalize AFMPB 
-int finalize(); 
 
 struct Atom {
   dashmm::Point position; 
@@ -60,8 +69,6 @@ struct Node {
   double rhs[2] = {0.0};            // AFMPBRHS expansion result 
   std::vector<double> gmres;        // GMRES working buffer, including
                                     // input, output, and Krylov basis
-  double charge[2] = {0.0};         // Input to AFMPBLHS expansion
-  double value[2] = {0.0};          // Result of AFMPBLHS expansion
   std::map<int, std::vector<double>> cached; // Cached values for S_to_T
 }; 
 
@@ -105,9 +112,7 @@ public:
   }
   
   void setup(); 
-
   void solve(); 
-
   void collect(); 
 
 private: 
@@ -124,6 +129,11 @@ private:
   void evaluateGaussianPoint(); 
   double totalFreeEnergy(const GNode *gauss, int ngauss, 
                          const Node *nodes, int nnodes) const; 
+  double generalizedInnerProduct(int x, int y); 
+  void modifiedGramSchmidtReOrth(); 
+  void applyGivensRotation(); 
+  void generateGivensRotation(double &x, double &y); 
+  double updateResidualNorm(); 
 
 private: 
   std::ifstream pqr_; 
@@ -152,7 +162,17 @@ private:
   double *xi_; 
   double *eta_; 
   double *weight_; 
-  
+
+  // Parameters and workspace for GMRES
+  std::vector<double> hess_;     // Hessenberg matrix 
+  std::vector<double> cosine_;   // Cosine values for the Givens rotation
+  std::vector<double> sine_;     // Sine values for the Givens rotation
+  std::vector<double> residual_; // Residual norm 
+  int maxMV_;                    // Maximum number of matrix-vector multiply
+  double rel_tolerance_;      
+  double abs_tolerance_; 
+  hpx_addr_t reducer_;           // For inner product computation
+
   int natoms_; 
   int nnodes_; 
   int ngauss_; 
@@ -160,11 +180,10 @@ private:
   std::vector<Element> elements_; 
   dashmm::Array<Node>  nodes_; 
   dashmm::Array<GNode> gauss_; 
-
+ 
   double area_; 
   double volume_; 
 }; 
-
 
 } // namespace afmpb 
 
