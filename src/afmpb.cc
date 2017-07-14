@@ -16,7 +16,6 @@ dashmm::ArrayMapAction<Node, double> rhs_action{set_rhs};
 dashmm::ArrayMapAction<Node, double> r0_action{set_r0}; 
 
 void AFMPB::solve() {
-#if 1
   // Solve Ax = b using restarted GMRES 
 
   // Compute right-hand side b 
@@ -98,52 +97,6 @@ void AFMPB::solve() {
   // Cleanup 
   err = lhs.destroy_DAG(tree, std::move(dag)); 
   err = lhs.destroy_tree(tree); 
-
-#else 
-  // some debug code to be removed 
-  
-  // Compute the right-hand side of the linear system
-  dashmm::FMM97<Atom, Node, dashmm::AFMPBRHS> m_rhs{}; 
-  std::vector<double> kparam_rhs{}; 
-  auto err = rhs.evaluate(atoms_, nodes_, refine_limit_, &m_rhs, 
-                          accuracy_, &kparam_rhs); 
-  assert(err == dashmm::kSuccess); 
-  nodes_.map(rhs_action, &dielectric_exterior_); 
-
-  /*
-  {
-    auto temp = nodes_.collect();
-    assert(err == dashmm::kSuccess); 
-  }
-  */
-
-  // Test the matrix-vector multiply of the left-hand side
-  dashmm::FMM97NL3<Node, Node, dashmm::AFMPBLHS> m_lhs{};
-  std::vector<double> kparam_lhs;
-  kparam_lhs.push_back(kap_); 
-  kparam_lhs.push_back(dielectric_); 
-  kparam_lhs.push_back(cut1_); 
-  kparam_lhs.push_back(cut2_);
-  kparam_lhs.push_back(sigma_); 
-  kparam_lhs.push_back(restart_); 
-
-  auto tree = lhs.create_tree(nodes_, nodes_, refine_limit_); 
-  auto dag = lhs.create_DAG(tree, accuracy_, &kparam_lhs, &m_lhs); 
-  err = lhs.execute_DAG(tree, dag.get()); 
-  err = lhs.destroy_DAG(tree, std::move(dag)); 
-  err = lhs.destroy_tree(tree); 
-
-  {
-    auto temp = nodes_.collect(); 
-    assert(err == dashmm::kSuccess);
-  }
-#endif
-
-
-
-
-
-
 }
 
 
