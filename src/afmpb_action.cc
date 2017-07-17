@@ -102,13 +102,15 @@ int linear_combination_handler(hpx_addr_t data, double *c, int k) {
 
   for (int i = 0; i < count; ++i) {
     nodes[i].gmres[0] *= c[0]; 
-    nodes[i].gmres[1] *= c[1]; 
+    nodes[i].gmres[1] *= c[0]; 
     for (int j = 1; j <= k; ++j) {
       nodes[i].gmres[0] += c[j] * nodes[i].gmres[2 * j]; 
       nodes[i].gmres[1] += c[j] * nodes[i].gmres[2 * j + 1];
     }
   }
 
+  hpx_gas_unpin(global); 
+  hpx_exit(0, nullptr); 
 }
 HPX_ACTION(HPX_DEFAULT, HPX_ATTR_NONE, linear_combination_, 
            linear_combination_handler, HPX_ADDR, HPX_POINTER, HPX_INT); 
@@ -141,5 +143,10 @@ double AFMPB::generalizedInnerProduct(int x, int y) {
   return retval;
 }
 
+void AFMPB::linearCombination(int k) {
+  hpx_addr_t data = nodes_.data(); 
+  double *c = residual_.data(); 
+  hpx_run_spmd(&linear_combination_, nullptr, &data, &c, &k); 
+}
 
 } // namespace afmpb 

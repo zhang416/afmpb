@@ -1,3 +1,4 @@
+#include <iomanip>
 #include <cmath>
 #include <hpx/hpx.h>
 #include "afmpb.h"
@@ -22,6 +23,15 @@ void AFMPB::solve() {
                           accuracy_, &kparam_rhs); 
   assert(err == dashmm::kSuccess); 
 
+  // Compute 2-norm of the rhs, setup tolerance for GMRES 
+  double rhs_norm2 = generalizedInnerProduct(-1, -1); 
+  double tolerance = rel_tolerance_ * rhs_norm2 + abs_tolerance_; 
+
+  log_ << "Solver status:\n"
+       << std::setw(50) << std::left << "... GMRES solver tolerance:"
+       << std::setw(14) << std::right << std::setprecision(5) 
+       << std::scientific << tolerance << "\n"; 
+
   // Set initial guess x0 = b 
   nodes_.map(rhs_action, &dielectric_exterior_); 
 
@@ -39,20 +49,22 @@ void AFMPB::solve() {
 
   // Compute Ax0 and initial residual r0 = b - Ax0
   err = lhs.execute_DAG(tree, dag.get()); 
+  err = lhs.reset_DAG(dag.get());  
   nodes_.map(r0_action, (double *)nullptr); 
-
-  // Compute 2-norm of the rhs, setup tolerance for GMRES 
-  double rhs_norm2 = generalizedInnerProduct(-1, -1); 
-  double tolerance = rel_tolerance_ * rhs_norm2 + abs_tolerance_; 
   
   // Compute 2-norm of r0, normalize it to q0
   residual_[0] = generalizedInnerProduct(0, 0); 
 
-  bool terminateLoop = false, computeApproxSolution = false; 
+  log_ << std::setw(50) << std::left << "... Iteration 0 residual norm:" 
+       << std::setw(14) << std::right << std::setprecision(5) 
+       << std::scientific << residual_[0] << "\n";
+
+  bool terminateLoop = false, computeSolution = false; 
 
   while (true) {
     // Compute A * qk
     err = lhs.execute_DAG(tree, dag.get()); 
+    err = lhs.reset_DAG(dag.get());  
 
     // Orthogonalize the result against q0, ..., qk
     modifiedGramSchmidtReOrth(); 
@@ -62,24 +74,36 @@ void AFMPB::solve() {
     applyGivensRotation(); 
     
     // Compute the new residual norm 
-    double alpha = updateResidualNorm(); 
+    double alpha = fabs(updateResidualNorm()); 
 
     int nMV = dashmm::builtin_afmpb_table_->increFetchIter(); 
 
+    log_ << std::setw(50) << std::left << "... Iteration " << nMV
+         << " residual norm:" << std::setw(14) << std::right 
+         << std::setprecision(5) << std::scientific << alpha << "\n"; 
+
     if (alpha < tolerance) {
       terminateLoop = true; 
-      computeApproxSolution = true;
+      computeSolution = true;
+
+      log_ << std::setw(50) << std::left << "... GMRES solver has converged\n";
     } else {
       if (nMV == maxMV_ - 1) {
         // Reach maximum allowed matrix-vector multiply 
         terminateLoop = true;
+
+        log_ << std::setw(50) << std::left 
+             << "... GMRES solver is terminated without convergence\n"; 
+
       } else if (nMV % restart_ == restart_ - 1) {
-        computeApproxSolution = true;
+        computeSolution = true;
+        
+        log_ << std::setw(50) << std::left << "... GMRES solver restarts\n"; 
       }
     }
 
-    if (computeApproxSolution) {
-      computeApproxSolution(); 
+    if (computeSolution) {
+      assert(computeApproxSolution() == 0); 
       if (!terminateLoop) 
         dashmm::builtin_afmpb_table_->increIter(); 
     } 
@@ -87,10 +111,6 @@ void AFMPB::solve() {
     if (terminateLoop) 
       break;
   }
-
-
-
-
 
   // Cleanup 
   err = lhs.destroy_DAG(tree, std::move(dag)); 
@@ -101,6 +121,8 @@ void AFMPB::solve() {
 void AFMPB::modifiedGramSchmidtReOrth() {  
   int k = dashmm::builtin_afmpb_table_->s_iter(); 
 
+  // [Aq_0, ...., Aq_k] = [q_0, ..., q_k, q_{k + 1}] * hess; 
+  
   // Compute the square of the 2-norm of the input vector A * q_k, without
   // normalizing it
   double Aqk_norm2 = generalizedInnerProduct(k + 1, -(k + 1)); 
@@ -111,13 +133,13 @@ void AFMPB::modifiedGramSchmidtReOrth() {
   // updated after operating with each vector. 
   double threshold = Aqk_norm2 * 0.98; 
 
-  // Starting index of h_{0, k+1} in the Hessenberg matrix 
-  int hidx = (k + 1) * (k + 2) / 2; 
+  // Starting index of h_{0, k} in the Hessenberg matrix 
+  int hidx = k * (k + 1) / 2; 
 
   // Modified Gram-Schmidt loop 
   for (int i = 0; i <= k; ++i) {
-    // h_{i, k + 1} = <A * q_k, q_i> 
-    // A * q_k = A * q_k - h_{i, k + 1} * q_i
+    // h_{i, k} = <Aq_k, q_i> 
+    // Aq_k = Aq_k - h_{i, k} * q_i
     hess_[hidx] = generalizedInnerProduct(k + 1, i); 
 
     if (hess_[hidx] * hess_[hidx] > threshold) {
@@ -143,8 +165,10 @@ void AFMPB::modifiedGramSchmidtReOrth() {
 void AFMPB::applyGivensRotation() {
   int k = dashmm::builtin_afmpb_table_->s_iter(); 
 
-  // Starting index of h_{*, k + 1} in the Hessenberg matrix 
-  int hidx = (k + 1) * (k + 2) / 2; 
+  // [Aq_0, ...., Aq_k] = [q_0, ..., q_k, q_{k + 1}] * hess; 
+
+  // Index of h_{0, k} of the Hessenberg matrix 
+  int hidx = k * (k + 1) / 2; 
   
   // Apply the previous k Givens rotations
   for (int i = 0; i < k; ++i) {
@@ -158,7 +182,6 @@ void AFMPB::applyGivensRotation() {
 
   // Generate a new Givens rotation 
   generateGivensRotation(hess_[hidx + k], hess_[hidx + k + 1]); 
-  
 }
 
 void AFMPB::generateGivensRotation(double &x, double &y) {
@@ -167,12 +190,12 @@ void AFMPB::generateGivensRotation(double &x, double &y) {
   if (x == 0.0 && y == 0.0) {
     cosine_[k] = 1.0; 
     sine_[k] = 0.0;
-  } else if (abs(y) > abs(x)) {
+  } else if (fabs(y) > fabs(x)) {
     double t = x / y; 
     x = sqrt(1.0 + t * t); 
     sine_[k] = std::copysign(1.0 / x, y); 
     cosine_[k] = t * sine_[k];
-  } else if (abs(y) <= abs(x)) {
+  } else if (fabs(y) <= fabs(x)) {
     double t = y / x; 
     y = sqrt(1.0 + t * t); 
     cosine_[k] = std::copysign(1.0 / y, x); 
@@ -185,7 +208,7 @@ void AFMPB::generateGivensRotation(double &x, double &y) {
     sine_[k] = 0.0; 
   }
 
-  x = abs(x * y);  
+  x = fabs(x * y);  
 }
 
 double AFMPB::updateResidualNorm() {
@@ -203,39 +226,37 @@ double AFMPB::updateResidualNorm() {
 int AFMPB::computeApproxSolution() {
   int k = dashmm::builtin_afmpb_table_->s_iter(); 
 
-  // [Aq_0, ..., Aq_{k - 1}] = [q_0, ..., q_{k - 1}, q_k] * H; 
+  // [Aq_0, ..., Aq_{k - 1}] = [q_0, ..., q_{k - 1}, q_k] * hess_; 
   
-
-  
-  /*
-  // Check the diagonal element of the last column of Hessenberg
-  // matrix. If its value is zero, reduce k by 1 so that a smaller
-  // triangular system is solved. [It should only happen when the
-  // matrix is singular, and at most once.]
+  // Check the diagonal element of the last column of Hessenberg matrix. If its
+  // value is zero, reduce k by 1 so that a smaller triangular system is
+  // solved. [It should only happen when the matrix is singular, and at most
+  // once.] 
   while (k >= 0) {
-    int hidx = k * (k + 1) / 2; 
+    int hidx = k * (k + 1) / 2 - 1; // hess_{k - 1, k - 1} 
     if (hess_[hidx] == 0) {
-      k--; 
+      k--;
     } else {
       break;
     }
   }
 
-  if (k < 0) // triangular system has null rank
-    return -1; 
-  */
+  if (k < 0) // Triangular system has null rank
+    return -1;
 
-  // Backward solve the triangular system, overwrite residual_
+  // Backward solve of the triangular system, overwrite residual_ 
   for (int i = k - 1; i >= 0; i--) {
-    residual_[i] /= hess_[(i + 1) * (i + 2) / 2]; 
-    for (int j = 0; j <= i - 1; ++j) 
-      residual_[j] -= residual_[i] * hess_[i * (i + 1) / 2 + j]; 
+    int hidx = i * (i + 1) / 2; // hess_{0, i} 
+    residual_[i] /= hess_[hidx + i]; 
+    for (int j = 0; j <= i - 1; ++j) {
+      residual_[j] -= residual_[i] * hess_[hidx + j]; 
+    }
   }
 
-  // 
-    
+  // Compute linear combination y_0 * q_0 + ... + y_{k - 1} * q_{k - 1}
+  linearCombination(k - 1);    
 
-
+  return 0;
 }
 
 } // namespace afmpb

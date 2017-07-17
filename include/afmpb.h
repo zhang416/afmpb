@@ -41,7 +41,7 @@ struct Configuration {
   int restart = 50; 
   int max_restart = 1; 
   double rel_tolerance = 1e-5;
-  double abs_tolerance = 1e-5; 
+  double abs_tolerance = 1e-4; 
 }; 
 
 struct Atom {
@@ -135,7 +135,8 @@ private:
   void applyGivensRotation(); 
   void generateGivensRotation(double &x, double &y); 
   double updateResidualNorm(); 
-  void computeApproxSolution(); 
+  int computeApproxSolution(); 
+  void linearCombination(int k); 
 
 private: 
   std::ifstream pqr_; 
