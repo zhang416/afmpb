@@ -16,6 +16,7 @@ extern hpx_action_t sum_ident_op_;
 extern hpx_action_t sum_op_; 
 extern hpx_action_t allocate_reducer_; 
 extern hpx_action_t inner_product_; 
+extern hpx_action_t linear_combination_; 
 
 void set_rhs(Node *n, const size_t count, const double *dielectric); 
 void set_r0(Node *n, const size_t count, const double *unused); 

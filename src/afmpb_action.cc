@@ -90,6 +90,29 @@ int inner_product_handler(hpx_addr_t data, hpx_addr_t reduce, int x, int y) {
 HPX_ACTION(HPX_DEFAULT, HPX_ATTR_NONE, inner_product_, 
            inner_product_handler, HPX_ADDR, HPX_ADDR, HPX_INT, HPX_INT); 
 
+int linear_combination_handler(hpx_addr_t data, double *c, int k) {
+  int myrank = hpx_get_my_rank(); 
+  size_t meta = sizeof(dashmm::ArrayMetaData<Node>); 
+  hpx_addr_t global = hpx_addr_add(data, meta * myrank, meta); 
+  dashmm::ArrayMetaData<Node> *local{nullptr}; 
+  assert(hpx_gas_try_pin(global, (void **)&local)); 
+
+  Node *nodes = local->data; 
+  size_t count = local->local_count; 
+
+  for (int i = 0; i < count; ++i) {
+    nodes[i].gmres[0] *= c[0]; 
+    nodes[i].gmres[1] *= c[1]; 
+    for (int j = 1; j <= k; ++j) {
+      nodes[i].gmres[0] += c[j] * nodes[i].gmres[2 * j]; 
+      nodes[i].gmres[1] += c[j] * nodes[i].gmres[2 * j + 1];
+    }
+  }
+
+}
+HPX_ACTION(HPX_DEFAULT, HPX_ATTR_NONE, linear_combination_, 
+           linear_combination_handler, HPX_ADDR, HPX_POINTER, HPX_INT); 
+
 
 void set_rhs(Node *n, const size_t count, const double *dielectric) {
   for (int i = 0; i < count; ++i) {

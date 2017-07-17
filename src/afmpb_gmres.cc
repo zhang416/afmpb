@@ -7,7 +7,6 @@
 
 namespace afmpb {
 
-//dashmm::Evaluator<Atom, GNode, dashmm::AFMPBRHS, dashmm::FMM97> interp{}; 
 dashmm::Evaluator<Atom, Node, dashmm::AFMPBRHS, dashmm::FMM97> rhs{};
 dashmm::Evaluator<Node, Node, dashmm::AFMPBLHS, dashmm::FMM97NL3> lhs{}; 
 dashmm::ArrayMapAction<Node, double> rhs_action{set_rhs}; 
@@ -65,11 +64,12 @@ void AFMPB::solve() {
     // Compute the new residual norm 
     double alpha = updateResidualNorm(); 
 
+    int nMV = dashmm::builtin_afmpb_table_->increFetchIter(); 
+
     if (alpha < tolerance) {
       terminateLoop = true; 
       computeApproxSolution = true;
     } else {
-      int nMV = dashmm::builtin_afmpb_table_->increFetchIter(); 
       if (nMV == maxMV_ - 1) {
         // Reach maximum allowed matrix-vector multiply 
         terminateLoop = true;
@@ -83,7 +83,6 @@ void AFMPB::solve() {
       if (!terminateLoop) 
         dashmm::builtin_afmpb_table_->increIter(); 
     } 
-
 
     if (terminateLoop) 
       break;
@@ -201,7 +200,42 @@ double AFMPB::updateResidualNorm() {
   return residual_[k + 1]; 
 }
 
-void AFMPB::computeApproxSolution() {
+int AFMPB::computeApproxSolution() {
+  int k = dashmm::builtin_afmpb_table_->s_iter(); 
+
+  // [Aq_0, ..., Aq_{k - 1}] = [q_0, ..., q_{k - 1}, q_k] * H; 
+  
+
+  
+  /*
+  // Check the diagonal element of the last column of Hessenberg
+  // matrix. If its value is zero, reduce k by 1 so that a smaller
+  // triangular system is solved. [It should only happen when the
+  // matrix is singular, and at most once.]
+  while (k >= 0) {
+    int hidx = k * (k + 1) / 2; 
+    if (hess_[hidx] == 0) {
+      k--; 
+    } else {
+      break;
+    }
+  }
+
+  if (k < 0) // triangular system has null rank
+    return -1; 
+  */
+
+  // Backward solve the triangular system, overwrite residual_
+  for (int i = k - 1; i >= 0; i--) {
+    residual_[i] /= hess_[(i + 1) * (i + 2) / 2]; 
+    for (int j = 0; j <= i - 1; ++j) 
+      residual_[j] -= residual_[i] * hess_[i * (i + 1) / 2 + j]; 
+  }
+
+  // 
+    
+
+
 }
 
 } // namespace afmpb
