@@ -27,7 +27,7 @@ void AFMPB::solve() {
   double rhs_norm2 = generalizedInnerProduct(-1, -1); 
   double tolerance = rel_tolerance_ * rhs_norm2 + abs_tolerance_; 
 
-  log_ << "Solver status:\n"
+  log_ << "\nSolver status:\n"
        << std::setw(50) << std::left << "... GMRES solver tolerance:"
        << std::setw(14) << std::right << std::setprecision(5) 
        << std::scientific << tolerance << "\n"; 
@@ -55,7 +55,7 @@ void AFMPB::solve() {
   // Compute 2-norm of r0, normalize it to q0
   residual_[0] = generalizedInnerProduct(0, 0); 
 
-  log_ << std::setw(50) << std::left << "... Iteration 0 residual norm:" 
+  log_ << std::setw(50) << std::left << "... Iteration   0 residual norm:" 
        << std::setw(14) << std::right << std::setprecision(5) 
        << std::scientific << residual_[0] << "\n";
 
@@ -64,7 +64,6 @@ void AFMPB::solve() {
   while (true) {
     // Compute A * qk
     err = lhs.execute_DAG(tree, dag.get()); 
-    err = lhs.reset_DAG(dag.get());  
 
     // Orthogonalize the result against q0, ..., qk
     modifiedGramSchmidtReOrth(); 
@@ -78,27 +77,23 @@ void AFMPB::solve() {
 
     int nMV = dashmm::builtin_afmpb_table_->increFetchIter(); 
 
-    log_ << std::setw(50) << std::left << "... Iteration " << nMV
-         << " residual norm:" << std::setw(14) << std::right 
+    log_ << "... Iteration " << std::setw(3) << nMV << std::setw(33) 
+         << std::left << " residual norm:" << std::setw(14) << std::right 
          << std::setprecision(5) << std::scientific << alpha << "\n"; 
 
     if (alpha < tolerance) {
       terminateLoop = true; 
       computeSolution = true;
-
-      log_ << std::setw(50) << std::left << "... GMRES solver has converged\n";
+      log_ << "... GMRES solver has converged\n";
     } else {
       if (nMV == maxMV_ - 1) {
         // Reach maximum allowed matrix-vector multiply 
         terminateLoop = true;
 
-        log_ << std::setw(50) << std::left 
-             << "... GMRES solver is terminated without convergence\n"; 
-
+        log_ << "... GMRES solver is terminated without convergence\n"; 
       } else if (nMV % restart_ == restart_ - 1) {
-        computeSolution = true;
-        
-        log_ << std::setw(50) << std::left << "... GMRES solver restarts\n"; 
+        computeSolution = true;        
+        log_ << "... GMRES solver restarts\n"; 
       }
     }
 
@@ -108,8 +103,11 @@ void AFMPB::solve() {
         dashmm::builtin_afmpb_table_->increIter(); 
     } 
 
-    if (terminateLoop) 
+    if (terminateLoop) {
       break;
+    } else {
+      err = lhs.reset_DAG(dag.get());  
+    }    
   }
 
   // Cleanup 
