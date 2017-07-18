@@ -198,6 +198,8 @@ AFMPB::AFMPB(std::unique_ptr<Configuration> p) {
   residual_.resize(restart_ + 1); 
 
   hpx_run(&allocate_reducer_, &reducer_); 
+
+  setup(); 
 }
 
 } // namespace afmpb

@@ -112,11 +112,11 @@ public:
     }
   }
   
-  void setup(); 
   void solve(); 
   void collect(); 
 
 private: 
+  void setup(); 
   void processPQRFile(std::string &pqr_file); 
   Atom *readAtoms(); 
   void generateMesh(int s, const Atom *molecule,

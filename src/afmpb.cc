@@ -8,6 +8,9 @@ namespace afmpb {
 dashmm::Evaluator<Atom, GNode, dashmm::AFMPBRHS, dashmm::FMM97> interp{}; 
 
 void AFMPB::setup() {
+  if (hpx_get_my_rank())
+    return; 
+
   auto molecule = readAtoms(); 
   int err = atoms_.allocate(natoms_, molecule); 
   assert(err == dashmm::kSuccess); 
@@ -42,10 +45,14 @@ void AFMPB::setup() {
        << "----------------------------------------------------------------\n\n"
        << "Problem parameters:\n"
        << std::setw(50) << std::left << "... n_atoms:" 
-       << std::setw(14) << std::right << natoms_ << "\n"
-       << std::setw(50) << std::left << "... n_elements:" 
-       << std::setw(14) << std::right << elements_.size() << "\n"
-       << std::setw(50) << std::left << "... n_nodes:" 
+       << std::setw(14) << std::right << natoms_ << "\n";
+  
+  if (mesh_format_) {
+    log_ << std::setw(50) << std::left << "... n_elements:" 
+         << std::setw(14) << std::right << elements_.size() << "\n";
+  } 
+
+  log_ << std::setw(50) << std::left << "... n_nodes:" 
        << std::setw(14) << std::right << nnodes_ << "\n"
        << std::setw(50) << std::left << "... Area: " 
        << std::setw(14) << std::right << std::setprecision(5) 

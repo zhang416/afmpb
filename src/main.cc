@@ -6,8 +6,6 @@ int main(int argc, char **argv) {
   if (parameter) {
     afmpb::AFMPB system(std::move(parameter)); 
 
-    system.setup(); 
-
     system.solve(); 
 
     system.collect(); 
