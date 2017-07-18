@@ -1,9 +1,11 @@
 #include <iomanip>
 #include <cmath>
+#include <memory>
 #include <hpx/hpx.h>
 #include "afmpb.h"
 #include "afmpb_lhs.h"
 #include "afmpb_rhs.h"
+#include "afmpb_serializer.h"
 #include "fmm97NL3_method.h"
 
 namespace afmpb {
@@ -15,12 +17,25 @@ dashmm::ArrayMapAction<Node, double> r0_action{set_r0};
 
 void AFMPB::solve() {
   // Solve Ax = b using restarted GMRES 
+  using Serializer = dashmm::Serializer; 
+  using NodeFullSerializer = dashmm::NodeFullSerializer; 
+  using NodePartialSerializer = dashmm::NodePartialSerializer; 
+  using NodeMinimumSerializer = dashmm::NodeMinimumSerializer; 
+
+  std::unique_ptr<Serializer> m_full{new NodeFullSerializer}; 
+  std::unique_ptr<Serializer> m_part{new NodePartialSerializer}; 
+  std::unique_ptr<Serializer> m_min{new NodeMinimumSerializer}; 
 
   // Compute right-hand side b 
   dashmm::FMM97<Atom, Node, dashmm::AFMPBRHS> m_rhs{}; 
   std::vector<double> kparam_rhs{}; 
+
+  
+  //auto err = nodes_.set_manager(std::move(m_full)); 
+  //assert(err == dashmm::kSuccess); 
+
   auto err = rhs.evaluate(atoms_, nodes_, refine_limit_, &m_rhs, 
-                          accuracy_, &kparam_rhs); 
+                     accuracy_, &kparam_rhs); 
   assert(err == dashmm::kSuccess); 
 
   // Compute 2-norm of the rhs, setup tolerance for GMRES 
@@ -37,6 +52,7 @@ void AFMPB::solve() {
 
   // Create DAG for Ax computation
   dashmm::FMM97NL3<Node, Node, dashmm::AFMPBLHS> m_lhs{};
+
   std::vector<double> kparam_lhs;
   kparam_lhs.push_back(kap_); 
   kparam_lhs.push_back(dielectric_); 
@@ -48,8 +64,15 @@ void AFMPB::solve() {
   auto dag = lhs.create_DAG(tree, accuracy_, &kparam_lhs, &m_lhs); 
 
   // Compute Ax0 and initial residual r0 = b - Ax0
+  //err = nodes_.set_manager(std::move(m_part)); 
+  //assert(err == dashmm::kSuccess); 
+
   err = lhs.execute_DAG(tree, dag.get()); 
+  assert(err == dashmm::kSuccess); 
+
   err = lhs.reset_DAG(dag.get());  
+  assert(err == dashmm::kSuccess); 
+
   nodes_.map(r0_action, (double *)nullptr); 
   
   // Compute 2-norm of r0, normalize it to q0
@@ -63,7 +86,11 @@ void AFMPB::solve() {
 
   while (true) {
     // Compute A * qk
+    //err = nodes_.set_manager(std::move(m_min)); 
+    //assert(err == dashmm::kSuccess); 
+
     err = lhs.execute_DAG(tree, dag.get()); 
+    assert(err == dashmm::kSuccess); 
 
     // Orthogonalize the result against q0, ..., qk
     modifiedGramSchmidtReOrth(); 
@@ -112,7 +139,10 @@ void AFMPB::solve() {
 
   // Cleanup 
   err = lhs.destroy_DAG(tree, std::move(dag)); 
+  assert(err == dashmm::kSuccess); 
+
   err = lhs.destroy_tree(tree); 
+  assert(err == dashmm::kSuccess); 
 }
 
 

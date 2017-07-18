@@ -72,6 +72,9 @@ void AFMPB::setup() {
 }
 
 void AFMPB::collect() {
+  if (hpx_get_my_rank())
+    return; 
+
   const double unitfactor = 4171.8;
 
   auto gauss = gauss_.collect(); 

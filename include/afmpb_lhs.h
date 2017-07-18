@@ -1,7 +1,6 @@
 #ifndef __AFMPB_LHS_H__
 #define __AFMPB_LHS_H__
 
-#include <cassert>
 #include <cmath>
 #include <complex>
 #include <map>
