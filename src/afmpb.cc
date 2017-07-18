@@ -65,6 +65,8 @@ void AFMPB::setup() {
 }
 
 void AFMPB::collect() {
+  const double unitfactor = 4171.8;
+
   auto gauss = gauss_.collect(); 
   auto nodes = nodes_.collect(); 
   
@@ -82,44 +84,50 @@ void AFMPB::collect() {
               });
   }
 
-  // Compute total free energy 
-  double energy = totalFreeEnergy(gauss.get(), ngauss_, 
-                                  nodes.get(), nnodes_); 
+  for (int i = 0; i < nnodes_; ++i) {
+    nodes[i].gmres[0] *= unitfactor; 
+    nodes[i].gmres[1] *= unitfactor;
+  }
 
-  /*
+  // Compute total free energy 
+  double nonpolar = surface_tension_ * area_ + pressure_ * volume_; 
+  double polar = polarEnergy(gauss.get(), ngauss_, nodes.get(), nnodes_); 
+
+  log_ << "\nResults:\n"
+       << std::setw(50) << std::left << "Total solvation energy:" 
+       << std::setw(14) << std::right << std::setprecision(5) 
+       << std::scientific << nonpolar + polar << "\n"
+       << std::setw(50) << std::left << "... Polar part:" 
+       << std::setw(14) << std::right << std::setprecision(5) 
+       << std::scientific << polar << "\n"
+       << std::setw(50) << std::left << "... Nonpolar part:" 
+       << std::setw(14) << std::right << std::setprecision(5) 
+       << std::scientific << nonpolar << "\n";
+
   // Write potentials 
-  potential_.precision(5); 
+  potential_.precision(8); 
   potential_ << std::scientific; 
   for (int i = 0; i < nnodes_; ++i) {
     const Node &n = nodes[i]; 
-    potential_ << n.position.x() << " " 
-               << n.position.y() << " "
-               << n.position.z() << " " 
-               << n.normal_o.x() << " "
-               << n.normal_o.y() << " " 
-               << n.normal_o.z() << " " 
-               << n.value[0]  << " " 
-               << n.value[1]  << "\n";
+    potential_ << n.position.x() << " " << n.position.y() << " "
+               << n.position.z() << " " << n.normal_o.x() << " "
+               << n.normal_o.y() << " " << n.normal_o.z() << " " 
+               << n.gmres[0]  << " " << n.gmres[1]  << "\n";
   }
 
   if (!mesh_format_) {
     for (auto && e : elements_) {
-      potential_ << e.nodes[0] << " " << e.nodes[1] << " " << e.nodes[2] << "\n";
+      potential_ << std::setw(8) << e.nodes[0] << " " 
+                 << std::setw(8) << e.nodes[1] << " " 
+                 << std::setw(8) << e.nodes[2] << "\n";
     }
   } 
-  */
 }
 
-
-void AFMPB::evaluateGaussianPoint() {
-
-}
-
-double AFMPB::totalFreeEnergy(const GNode *gauss, int ngauss, 
-                              const Node *nodes, int nnodes) const {
+double AFMPB::polarEnergy(const GNode *gauss, int ngauss, 
+                          const Node *nodes, int nnodes) const {
   double b = 0; 
 
-  /*
   if (mesh_format_) {
     for (auto && e : elements_) {
       int i1 = e.nodes[0]; 
@@ -129,29 +137,28 @@ double AFMPB::totalFreeEnergy(const GNode *gauss, int ngauss,
       double temp = 0; 
       for (int j = 0; j < 7; ++j) {
         double zeta = 1.0 - xi_[j] - eta_[j]; 
-        double f = nodes[i1].value[0] * zeta + 
-          nodes[i2].value[0] * xi_[j] + nodes[i3].value[0] * eta_[j];
-        double h = nodes[i1].value[1] * zeta + 
-          nodes[i2].value[1] * xi_[j] + nodes[i3].value[1] * eta_[j]; 
+        double f = nodes[i1].gmres[0] * zeta + 
+          nodes[i2].gmres[0] * xi_[j] + nodes[i3].gmres[0] * eta_[j]; 
+        double h = nodes[i1].gmres[1] * zeta + 
+          nodes[i2].gmres[1] * xi_[j] + nodes[i3].gmres[1] * eta_[j]; 
         temp += (gauss[index + j].rhs[0] * h * dielectric_ - 
-                 gauss[index + j].rhs[1] * f) * weight_[j]; 
+                 gauss[index + j].rhs[1] * f) * weight_[j];
       }
-      b += temp * e.area; 
+      b += temp * e.area;
     }
-      
-    b /= 8 * M_PI;     
+
+    b /= 8 * M_PI; 
   } else {
-    // When using built-in mesh, the number of Gaussian quadrature points is the
-    // same as the number of nodes of the surface mesh 
+    // When using built-in mesh, the number of Gaussian quadrature
+    // points is the same as the number of nodes of the surface mesh 
     for (int i = 0; i < ngauss; ++i) {
-      b += (gauss[i].rhs[0] * nodes[i].value[1] * dielectric_ -
-            gauss[i].rhs[1] * nodes[i].value[0] * nodes[i].area) / 2; 
+      b += (gauss[i].rhs[0] * nodes[i].gmres[1] * dielectric_ - 
+            gauss[i].rhs[1] * nodes[i].gmres[0]) * nodes[i].area / 2.0; 
     }
-    
     b /= 4 * M_PI / 0.985; 
   }
-  */
-  return surface_tension_ * area_ + pressure_ * volume_ + b;
+
+  return b; 
 }
 
 } // namespace afmpb

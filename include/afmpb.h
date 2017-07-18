@@ -127,9 +127,8 @@ private:
   void processElementGeometry(std::vector<Node> &nodes); 
   void generateGaussianPoint(const std::vector<Node> &nodes, 
                              std::vector<GNode> &gauss); 
-  void evaluateGaussianPoint(); 
-  double totalFreeEnergy(const GNode *gauss, int ngauss, 
-                         const Node *nodes, int nnodes) const; 
+  double polarEnergy(const GNode *gauss, int ngauss, 
+                     const Node *nodes, int nnodes) const; 
   double generalizedInnerProduct(int x, int y); 
   void modifiedGramSchmidtReOrth(); 
   void applyGivensRotation(); 

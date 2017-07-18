@@ -107,6 +107,10 @@ int linear_combination_handler(hpx_addr_t data, double *c, int k) {
       nodes[i].gmres[0] += c[j] * nodes[i].gmres[2 * j]; 
       nodes[i].gmres[1] += c[j] * nodes[i].gmres[2 * j + 1];
     }
+
+    // Add the result to the initial guess, which is saved in rhs
+    nodes[i].gmres[0] += nodes[i].rhs[0]; 
+    nodes[i].gmres[1] += nodes[i].rhs[1]; 
   }
 
   hpx_gas_unpin(global); 

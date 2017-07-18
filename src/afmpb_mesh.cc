@@ -13,7 +13,6 @@ void AFMPB::processPQRFile(std::string &pqr_file) {
     sscanf(buffer, "%d", &natoms_); 
 
   pqr_.open("processed.txt"); 
-  std::cout << natoms_ << "\n";
 }
 
 Atom *AFMPB::readAtoms() {
