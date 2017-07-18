@@ -29,12 +29,11 @@ void AFMPB::solve() {
   // Compute right-hand side b 
   dashmm::FMM97<Atom, Node, dashmm::AFMPBRHS> m_rhs{}; 
   std::vector<double> kparam_rhs{}; 
+ 
+  auto err = nodes_.set_manager(std::move(m_full)); 
+  assert(err == dashmm::kSuccess); 
 
-  
-  //auto err = nodes_.set_manager(std::move(m_full)); 
-  //assert(err == dashmm::kSuccess); 
-
-  auto err = rhs.evaluate(atoms_, nodes_, refine_limit_, &m_rhs, 
+  err = rhs.evaluate(atoms_, nodes_, refine_limit_, &m_rhs, 
                      accuracy_, &kparam_rhs); 
   assert(err == dashmm::kSuccess); 
 
@@ -64,8 +63,8 @@ void AFMPB::solve() {
   auto dag = lhs.create_DAG(tree, accuracy_, &kparam_lhs, &m_lhs); 
 
   // Compute Ax0 and initial residual r0 = b - Ax0
-  //err = nodes_.set_manager(std::move(m_part)); 
-  //assert(err == dashmm::kSuccess); 
+  err = nodes_.set_manager(std::move(m_part)); 
+  assert(err == dashmm::kSuccess); 
 
   err = lhs.execute_DAG(tree, dag.get()); 
   assert(err == dashmm::kSuccess); 
@@ -84,11 +83,11 @@ void AFMPB::solve() {
 
   bool terminateLoop = false, computeSolution = false; 
 
+  err = nodes_.set_manager(std::move(m_min)); 
+  assert(err == dashmm::kSuccess); 
+
   while (true) {
     // Compute A * qk
-    //err = nodes_.set_manager(std::move(m_min)); 
-    //assert(err == dashmm::kSuccess); 
-
     err = lhs.execute_DAG(tree, dag.get()); 
     assert(err == dashmm::kSuccess); 
 
