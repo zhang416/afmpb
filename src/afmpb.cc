@@ -8,26 +8,54 @@ namespace afmpb {
 dashmm::Evaluator<Atom, GNode, dashmm::AFMPBRHS, dashmm::FMM97> interp{}; 
 
 void AFMPB::setup() {
-  if (hpx_get_my_rank())
-    return; 
-
-  auto molecule = readAtoms(); 
-  int err = atoms_.allocate(natoms_, molecule); 
-  assert(err == dashmm::kSuccess); 
-
+  Atom *molecule{nullptr}; 
   std::vector<Node> nodes; 
   std::vector<GNode> gauss; 
+  natoms_ = 0; 
 
-  if (!mesh_format_) {
-    for (int i = 0; i < natoms_; ++i) 
-      generateMesh(i, molecule, nodes, gauss);
-  } else {
-    readMesh(nodes);
-    removeIsolatedNodes(nodes); 
-    processElementGeometry(nodes);  
-    generateGaussianPoint(nodes, gauss); 
+  if (hpx_get_my_rank() == 0) {
+    // Input file is read from rank 0 only 
+    molecule = readAtoms();
+
+    if (!mesh_format_) {
+      for (int i = 0; i < natoms_; ++i) 
+        generateMesh(i, molecule, nodes, gauss);
+    } else {
+      readMesh(nodes);
+      removeIsolatedNodes(nodes); 
+      processElementGeometry(nodes);  
+      generateGaussianPoint(nodes, gauss); 
+    }
+
+    log_ 
+      << "\n----------------------------------------------------------------\n"
+      << "*      Adaptive Fast Multipole Poisson Boltzmann Solver        *\n"
+      << "----------------------------------------------------------------\n\n"
+      << "Problem parameters:\n"
+      << std::setw(50) << std::left << "... n_atoms:" 
+      << std::setw(14) << std::right << natoms_ << "\n";
+  
+    if (mesh_format_) {
+      log_ << std::setw(50) << std::left << "... n_elements:" 
+           << std::setw(14) << std::right << elements_.size() << "\n";
+    } 
+    
+    log_ << std::setw(50) << std::left << "... n_nodes:" 
+         << std::setw(14) << std::right << nnodes_ << "\n"
+         << std::setw(50) << std::left << "... Area: " 
+         << std::setw(14) << std::right << std::setprecision(5) 
+         << std::scientific << area_ << "\n"
+         << std::setw(50) << std::left << "... Volume: "
+         << std::setw(14) << std::right << std::setprecision(5) 
+         << std::scientific << volume_ << "\n"
+         << std::setw(50) << std::left << "... Kap: "
+         << std::setw(14) << std::right << std::setprecision(5) 
+         << std::scientific << kap_ << "\n";
   }
-
+  
+  auto err = atoms_.allocate(natoms_, molecule); 
+  assert(err == dashmm::kSuccess); 
+    
   nnodes_ = nodes.size(); 
   err = nodes_.allocate(nnodes_); 
   assert(err == dashmm::kSuccess); 
@@ -40,35 +68,20 @@ void AFMPB::setup() {
   err = gauss_.put(0, ngauss_, gauss.data()); 
   assert(err == dashmm::kSuccess); 
 
-  log_ << "\n----------------------------------------------------------------\n"
-       << "*      Adaptive Fast Multipole Poisson Boltzmann Solver        *\n"
-       << "----------------------------------------------------------------\n\n"
-       << "Problem parameters:\n"
-       << std::setw(50) << std::left << "... n_atoms:" 
-       << std::setw(14) << std::right << natoms_ << "\n";
-  
-  if (mesh_format_) {
-    log_ << std::setw(50) << std::left << "... n_elements:" 
-         << std::setw(14) << std::right << elements_.size() << "\n";
-  } 
 
-  log_ << std::setw(50) << std::left << "... n_nodes:" 
-       << std::setw(14) << std::right << nnodes_ << "\n"
-       << std::setw(50) << std::left << "... Area: " 
-       << std::setw(14) << std::right << std::setprecision(5) 
-       << std::scientific << area_ << "\n"
-       << std::setw(50) << std::left << "... Volume: "
-       << std::setw(14) << std::right << std::setprecision(5) 
-       << std::scientific << volume_ << "\n"
-       << std::setw(50) << std::left << "... Kap: "
-       << std::setw(14) << std::right << std::setprecision(5) 
-       << std::scientific << kap_ << "\n";
+
+
 
   dashmm::FMM97<Atom, GNode, dashmm::AFMPBRHS> method{};
   std::vector<double> kparam{}; 
-  err = interp.evaluate(atoms_, gauss_, refine_limit_, &method, 
-                        accuracy_, &kparam);
-  assert(err == dashmm::kSuccess);  
+
+  auto tree = interp.create_tree(atoms_, gauss_, refine_limit_); 
+  auto dag = interp.create_DAG(tree, accuracy_, &kparam, &method); 
+
+
+  //err = interp.evaluate(atoms_, gauss_, refine_limit_, &method, 
+  //                    accuracy_, &kparam);
+  //assert(err == dashmm::kSuccess);  
 }
 
 void AFMPB::collect() {
