@@ -69,20 +69,16 @@ void AFMPB::setup() {
   err = gauss_.put(0, ngauss_, gauss.data());
   assert(err == dashmm::kSuccess);
 
-
-
-
-
   dashmm::FMM97<Atom, GNode, dashmm::AFMPBRHS> method{};
   std::vector<double> kparam{};
 
-  auto tree = interp.create_tree(atoms_, gauss_, refine_limit_);
-  auto dag = interp.create_DAG(tree, accuracy_, &kparam, &method);
+  //auto tree = interp.create_tree(atoms_, gauss_, refine_limit_);
+  //auto dag = interp.create_DAG(tree, accuracy_, &kparam, &method);
 
 
-  //err = interp.evaluate(atoms_, gauss_, refine_limit_, &method,
-  //                    accuracy_, &kparam);
-  //assert(err == dashmm::kSuccess);
+  err = interp.evaluate(atoms_, gauss_, refine_limit_, &method,
+                        accuracy_, &kparam);
+  assert(err == dashmm::kSuccess);
 }
 
 void AFMPB::collect() {
