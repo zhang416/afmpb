@@ -25,7 +25,7 @@ void AFMPB::setup() {
       processElementGeometry(nodes);
       generateGaussianPoint(nodes, gauss);
     }
-
+  
     log_
       << "\n----------------------------------------------------------------\n"
       << "*      Adaptive Fast Multipole Poisson Boltzmann Solver        *\n"
@@ -40,7 +40,7 @@ void AFMPB::setup() {
     }
 
     log_ << std::setw(50) << std::left << "... n_nodes:"
-         << std::setw(14) << std::right << nnodes_ << "\n"
+         << std::setw(14) << std::right << nodes.size() << "\n"
          << std::setw(50) << std::left << "... Area: "
          << std::setw(14) << std::right << std::setprecision(5)
          << std::scientific << area_ << "\n"
@@ -54,16 +54,17 @@ void AFMPB::setup() {
     natoms_ = 0;
   }
 
+  nnodes_ = nodes.size();
+  ngauss_ = gauss.size();
+
   auto err = atoms_.allocate(natoms_, molecule);
   assert(err == dashmm::kSuccess);
 
-  nnodes_ = nodes.size();
   err = nodes_.allocate(nnodes_);
   assert(err == dashmm::kSuccess);
   err = nodes_.put(0, nnodes_, nodes.data());
   assert(err == dashmm::kSuccess);
 
-  ngauss_ = gauss.size();
   err = gauss_.allocate(ngauss_);
   assert(err == dashmm::kSuccess);
   err = gauss_.put(0, ngauss_, gauss.data());
@@ -72,21 +73,14 @@ void AFMPB::setup() {
   dashmm::FMM97<Atom, GNode, dashmm::AFMPBRHS> method{};
   std::vector<double> kparam{};
 
-  //auto tree = interp.create_tree(atoms_, gauss_, refine_limit_);
-  //auto dag = interp.create_DAG(tree, accuracy_, &kparam, &method);
-
-
   err = interp.evaluate(atoms_, gauss_, refine_limit_, &method,
                         accuracy_, &kparam);
   assert(err == dashmm::kSuccess);
 }
 
 void AFMPB::collect() {
-  if (hpx_get_my_rank())
-    return;
-
+  int myrank = hpx_get_my_rank(); 
   const double unitfactor = 4171.8;
-
   auto gauss = gauss_.collect();
   auto nodes = nodes_.collect();
 
@@ -103,6 +97,9 @@ void AFMPB::collect() {
                 return (a.index < b.index);
               });
   }
+
+  if (myrank) 
+    return; 
 
   for (int i = 0; i < nnodes_; ++i) {
     nodes[i].gmres[0] *= unitfactor;

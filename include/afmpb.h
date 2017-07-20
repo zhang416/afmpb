@@ -15,6 +15,7 @@ struct Node;
 extern hpx_action_t sum_ident_op_; 
 extern hpx_action_t sum_op_; 
 extern hpx_action_t allocate_reducer_; 
+extern hpx_action_t reset_reducer_; 
 extern hpx_action_t inner_product_; 
 extern hpx_action_t linear_combination_; 
 
@@ -101,10 +102,6 @@ public:
     if (mesh_.is_open())
       mesh_.close();
 
-    assert(atoms_.destroy() == dashmm::kSuccess); 
-    assert(gauss_.destroy() == dashmm::kSuccess); 
-    assert(nodes_.destroy() == dashmm::kSuccess); 
-
     if (!mesh_format_) {
       delete [] xi_; 
       delete [] eta_; 
@@ -113,7 +110,14 @@ public:
   }
   
   void solve(); 
+
   void collect(); 
+  
+  void finalize() {
+    assert(atoms_.destroy() == dashmm::kSuccess); 
+    assert(gauss_.destroy() == dashmm::kSuccess); 
+    assert(nodes_.destroy() == dashmm::kSuccess); 
+  }
 
 private: 
   void setup(); 

@@ -16,6 +16,8 @@ dashmm::ArrayMapAction<Node, double> rhs_action{set_rhs};
 dashmm::ArrayMapAction<Node, double> r0_action{set_r0}; 
 
 void AFMPB::solve() {
+  int myrank = hpx_get_my_rank(); 
+
   // Solve Ax = b using restarted GMRES 
   using Serializer = dashmm::Serializer; 
   using NodeFullSerializer = dashmm::NodeFullSerializer; 
@@ -41,10 +43,12 @@ void AFMPB::solve() {
   double rhs_norm2 = generalizedInnerProduct(-1, -1); 
   double tolerance = rel_tolerance_ * rhs_norm2 + abs_tolerance_; 
 
-  log_ << "\nSolver status:\n"
-       << std::setw(50) << std::left << "... GMRES solver tolerance:"
-       << std::setw(14) << std::right << std::setprecision(5) 
-       << std::scientific << tolerance << "\n"; 
+  if (!myrank) {
+    log_ << "\nSolver status:\n"
+         << std::setw(50) << std::left << "... GMRES solver tolerance:"
+         << std::setw(14) << std::right << std::setprecision(5) 
+         << std::scientific << tolerance << "\n"; 
+  }
 
   // Set initial guess x0 = b 
   nodes_.map(rhs_action, &dielectric_exterior_); 
@@ -77,9 +81,11 @@ void AFMPB::solve() {
   // Compute 2-norm of r0, normalize it to q0
   residual_[0] = generalizedInnerProduct(0, 0); 
 
-  log_ << std::setw(50) << std::left << "... Iteration   0 residual norm:" 
-       << std::setw(14) << std::right << std::setprecision(5) 
-       << std::scientific << residual_[0] << "\n";
+  if (!myrank) {
+    log_ << std::setw(50) << std::left << "... Iteration   0 residual norm:" 
+         << std::setw(14) << std::right << std::setprecision(5) 
+         << std::scientific << residual_[0] << "\n";
+  }
 
   bool terminateLoop = false, computeSolution = false; 
 
@@ -103,23 +109,30 @@ void AFMPB::solve() {
 
     int nMV = dashmm::builtin_afmpb_table_->increFetchIter(); 
 
-    log_ << "... Iteration " << std::setw(3) << nMV << std::setw(33) 
-         << std::left << " residual norm:" << std::setw(14) << std::right 
-         << std::setprecision(5) << std::scientific << alpha << "\n"; 
+    if (!myrank) {
+      log_ << "... Iteration " << std::setw(3) << nMV << std::setw(33) 
+           << std::left << " residual norm:" << std::setw(14) << std::right 
+           << std::setprecision(5) << std::scientific << alpha << "\n"; 
+    }
 
     if (alpha < tolerance) {
       terminateLoop = true; 
       computeSolution = true;
-      log_ << "... GMRES solver has converged\n";
+
+      if (!myrank) 
+        log_ << "... GMRES solver has converged\n";
     } else {
       if (nMV == maxMV_ - 1) {
         // Reach maximum allowed matrix-vector multiply 
         terminateLoop = true;
-
-        log_ << "... GMRES solver is terminated without convergence\n"; 
+        
+        if (!myrank) 
+          log_ << "... GMRES solver is terminated without convergence\n"; 
       } else if (nMV % restart_ == restart_ - 1) {
         computeSolution = true;        
-        log_ << "... GMRES solver restarts\n"; 
+
+        if (!myrank) 
+          log_ << "... GMRES solver restarts\n"; 
       }
     }
 

@@ -30,6 +30,13 @@ int allocate_reducer_handler() {
 HPX_ACTION(HPX_DEFAULT, HPX_ATTR_NONE, 
            allocate_reducer_, allocate_reducer_handler);
 
+int reset_reducer_handler(hpx_addr_t reduce) {
+  hpx_lco_reset_sync(reduce); 
+  hpx_exit(0, nullptr); 
+} 
+HPX_ACTION(HPX_DEFAULT, HPX_ATTR_NONE, reset_reducer_, reset_reducer_handler, 
+           HPX_ADDR); 
+
 int inner_product_handler(hpx_addr_t data, hpx_addr_t reduce, int x, int y) {
   int myrank = hpx_get_my_rank(); 
   size_t meta = sizeof(dashmm::ArrayMetaData<Node>); 
@@ -80,9 +87,6 @@ int inner_product_handler(hpx_addr_t data, hpx_addr_t reduce, int x, int y) {
       nodes[i].gmres[2 * x + 1] -= temp * nodes[i].gmres[2 * y + 1];
     }
   }
-
-  if (!myrank) 
-    hpx_lco_reset_sync(reduce); 
 
   hpx_gas_unpin(global); 
   hpx_exit(sizeof(temp), &temp); 
@@ -143,7 +147,9 @@ void set_r0(Node *n, const size_t count, const double *unused) {
 double AFMPB::generalizedInnerProduct(int x, int y) {
   double retval = 0.0; 
   hpx_addr_t data = nodes_.data(); 
-  hpx_run(&inner_product_, &retval, &data, &reducer_, &x, &y); 
+  hpx_run_spmd(&inner_product_, &retval, &data, &reducer_, &x, &y); 
+  hpx_run(&reset_reducer_, nullptr, &reducer_); 
+
   return retval;
 }
 

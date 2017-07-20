@@ -9,6 +9,8 @@ int main(int argc, char **argv) {
     system.solve(); 
     
     system.collect(); 
+
+    system.finalize(); 
   } 
 
   auto err = afmpb::finalize(); 

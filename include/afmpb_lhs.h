@@ -326,11 +326,13 @@ class AFMPBLHS {
         i->cached[key] = tbl;
       }
 
-      for (auto j = s_first, k = 0; j != s_last; ++j, k += 4) {
+      int k = 0; 
+      for (auto j = s_first; j != s_last; ++j) {
         double q0 = j->gmres[2 * s_iter]; 
         double q1 = j->gmres[2 * s_iter + 1]; 
         f += (tbl[k] * q1 + tbl[k + 1] * q0); 
         h += (tbl[k + 2] * q1 + tbl[k + 3] * q0); 
+        k += 4; 
       }
 
       i->gmres[2 * t_iter] += f; 

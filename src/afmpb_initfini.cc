@@ -130,7 +130,6 @@ std::unique_ptr<Configuration> init(int argc, char **argv) {
     p = nullptr; 
   } 
 
-
   return std::unique_ptr<Configuration>{p}; 
 }
  
@@ -138,7 +137,6 @@ int finalize() {
   hpx_finalize(); 
   return 0;
 }
-
 
 AFMPB::AFMPB(std::unique_ptr<Configuration> p) {
   processPQRFile(p->pqr_file); 

@@ -16,8 +16,8 @@ public:
   size_t size(void *object) const override {
     afmpb::Node *n = reinterpret_cast<afmpb::Node *>(object); 
     size_t retval = 0; 
-    retval = sizeof(int) * 2 + // Index and number of elements in the patch
-      sizeof(Point) * 2 + // normal_i and normal_o 
+    retval = sizeof(int) * 3 + // Index, n_patches,  gmres buffer size
+      sizeof(Point) * 3 + // position, normal_i and normal_o 
       sizeof(afmpb::Patch) * n->patch.size() + // patch 
       sizeof(double) * 4; // area, projected, and rhs
     return retval; 
@@ -28,6 +28,7 @@ public:
     char *dest = reinterpret_cast<char *>(buffer); 
     size_t bytes = 0; 
     int n_patches = n->patch.size(); 
+    int n_gmres = n->gmres.size(); 
 
     bytes = sizeof(int); 
     memcpy(dest, &(n->index), bytes); 
@@ -36,7 +37,13 @@ public:
     memcpy(dest, &n_patches, bytes); 
     dest += bytes; 
 
+    memcpy(dest, &n_gmres, bytes); 
+    dest += bytes; 
+
     bytes = sizeof(Point); 
+    memcpy(dest, &(n->position), bytes); 
+    dest += bytes; 
+
     memcpy(dest, &(n->normal_i), bytes); 
     dest += bytes; 
 
@@ -65,6 +72,7 @@ public:
     char *src = reinterpret_cast<char *>(buffer); 
     size_t bytes = 0; 
     int n_patches = 0; 
+    int n_gmres = 0; 
 
     bytes = sizeof(int); 
     memcpy(&(n->index), src, bytes); 
@@ -73,7 +81,14 @@ public:
     memcpy(&n_patches, src, bytes); 
     src += bytes; 
 
+    memcpy(&n_gmres, src, bytes); 
+    src += bytes; 
+    n->gmres.resize(n_gmres); 
+
     bytes = sizeof(Point); 
+    memcpy(&(n->position), src, bytes); 
+    src += bytes; 
+
     memcpy(&(n->normal_i), src, bytes); 
     src += bytes; 
 
@@ -107,7 +122,8 @@ public:
   size_t size(void *object) const override {
     afmpb::Node *n = reinterpret_cast<afmpb::Node *>(object); 
     size_t retval = 0; 
-    retval = sizeof(int) * 2 + // Index and number of elements in the patch 
+    retval = sizeof(int) * 3 + // Index, n_patches, gmres buffer size
+      sizeof(Point) + // position
       sizeof(afmpb::Patch) * n->patch.size() + // patch 
       sizeof(double) * 4; // area, projected, and gmres[0]@2 
     return retval; 
@@ -118,12 +134,20 @@ public:
     char *dest = reinterpret_cast<char *>(buffer); 
     size_t bytes = 0; 
     int n_patches = n->patch.size(); 
+    int n_gmres = n->gmres.size(); 
 
     bytes = sizeof(int); 
     memcpy(dest, &(n->index), bytes); 
     dest += bytes; 
 
     memcpy(dest, &n_patches, bytes); 
+    dest += bytes; 
+
+    memcpy(dest, &n_gmres, bytes); 
+    dest += bytes; 
+
+    bytes = sizeof(Point); 
+    memcpy(dest, &(n->position), bytes); 
     dest += bytes; 
 
     bytes = sizeof(afmpb::Patch) * n_patches; 
@@ -149,12 +173,21 @@ public:
     char *src = reinterpret_cast<char *>(buffer); 
     size_t bytes = 0; 
     int n_patches = 0; 
+    int n_gmres = 0; 
 
     bytes = sizeof(int); 
     memcpy(&(n->index), src, bytes); 
     src += bytes; 
 
     memcpy(&n_patches, src, bytes); 
+    src += bytes; 
+
+    memcpy(&n_gmres, src, bytes); 
+    src += bytes; 
+    n->gmres.resize(n_gmres); 
+
+    bytes = sizeof(Point); 
+    memcpy(&(n->position), src, bytes); 
     src += bytes; 
 
     afmpb::Patch *p = reinterpret_cast<afmpb::Patch *>(src); 
@@ -184,7 +217,8 @@ public:
   ~NodeMinimumSerializer() { } 
 
   size_t size(void *object) const override {
-    return sizeof(int) + sizeof(double) * 2; 
+    return sizeof(int) * 2 + // Index, and gmres buffer size
+      sizeof(double) * 2; // gmres[2 * iter] @2 
   } 
 
   void *serialize(void *object, void *buffer) const override {
@@ -192,9 +226,13 @@ public:
     afmpb::Node *n = reinterpret_cast<afmpb::Node *>(object); 
     char *dest = reinterpret_cast<char *>(buffer); 
     size_t bytes = 0; 
+    int n_gmres = n->gmres.size(); 
 
     bytes = sizeof(int);
     memcpy(dest, &(n->index), bytes); 
+    dest += bytes; 
+
+    memcpy(dest, &n_gmres, bytes); 
     dest += bytes; 
 
     bytes = sizeof(double) * 2; 
@@ -210,10 +248,15 @@ public:
     afmpb::Node *n = reinterpret_cast<afmpb::Node *>(object); 
     char *src = reinterpret_cast<char *>(buffer); 
     size_t bytes = 0; 
+    int n_gmres = 0; 
 
     bytes = sizeof(int); 
     memcpy(&(n->index), src, bytes); 
     src += bytes; 
+
+    memcpy(&n_gmres, src, bytes); 
+    src += bytes; 
+    n->gmres.resize(n_gmres); 
 
     bytes = sizeof(double) * 2; 
     double *v = reinterpret_cast<double *>(src); 
