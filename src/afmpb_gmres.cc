@@ -39,6 +39,9 @@ void AFMPB::solve() {
                      accuracy_, &kparam_rhs); 
   assert(err == dashmm::kSuccess); 
 
+  // Set initial guess x0 = b 
+  nodes_.map(rhs_action, &dielectric_exterior_); 
+
   // Compute 2-norm of the rhs, setup tolerance for GMRES 
   double rhs_norm2 = generalizedInnerProduct(-1, -1); 
   double tolerance = rel_tolerance_ * rhs_norm2 + abs_tolerance_; 
@@ -49,9 +52,6 @@ void AFMPB::solve() {
          << std::setw(14) << std::right << std::setprecision(5) 
          << std::scientific << tolerance << "\n"; 
   }
-
-  // Set initial guess x0 = b 
-  nodes_.map(rhs_action, &dielectric_exterior_); 
 
   // Create DAG for Ax computation
   dashmm::FMM97NL3<Node, Node, dashmm::AFMPBLHS> m_lhs{};

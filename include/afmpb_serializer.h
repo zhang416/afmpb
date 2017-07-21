@@ -123,7 +123,7 @@ public:
     afmpb::Node *n = reinterpret_cast<afmpb::Node *>(object); 
     size_t retval = 0; 
     retval = sizeof(int) * 3 + // Index, n_patches, gmres buffer size
-      sizeof(Point) + // position
+      sizeof(Point) * 2 + // position, normal_i 
       sizeof(afmpb::Patch) * n->patch.size() + // patch 
       sizeof(double) * 4; // area, projected, and gmres[0]@2 
     return retval; 
@@ -148,6 +148,9 @@ public:
 
     bytes = sizeof(Point); 
     memcpy(dest, &(n->position), bytes); 
+    dest += bytes; 
+
+    memcpy(dest, &(n->normal_i), bytes); 
     dest += bytes; 
 
     bytes = sizeof(afmpb::Patch) * n_patches; 
@@ -188,6 +191,9 @@ public:
 
     bytes = sizeof(Point); 
     memcpy(&(n->position), src, bytes); 
+    src += bytes; 
+
+    memcpy(&(n->normal_i), src, bytes); 
     src += bytes; 
 
     afmpb::Patch *p = reinterpret_cast<afmpb::Patch *>(src); 
