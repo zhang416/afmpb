@@ -155,6 +155,9 @@ void AFMPB::solve() {
 
   err = lhs.destroy_tree(tree); 
   assert(err == dashmm::kSuccess); 
+
+  // Solution is saved in iteration 0 slot
+  dashmm::builtin_afmpb_table_->resetIter();
 }
 
 
