@@ -8,7 +8,6 @@
 
 namespace dashmm {
 
-// This serializer only skips the gmres field of the Node class
 class NodeFullSerializer : public Serializer {
 public: 
   ~NodeFullSerializer() { } 
@@ -114,7 +113,6 @@ public:
   }
 }; 
 
-// This serializer skips position, normal, and rhs field 
 class NodePartialSerializer : public Serializer {
 public: 
   ~NodePartialSerializer() { } 
@@ -217,14 +215,14 @@ public:
   }
 }; 
 
-// This serializer only packs index and gmres
 class NodeMinimumSerializer : public Serializer {
 public: 
   ~NodeMinimumSerializer() { } 
 
   size_t size(void *object) const override {
     return sizeof(int) * 2 + // Index, and gmres buffer size
-      sizeof(double) * 2; // gmres[2 * iter] @2 
+      + sizeof(Point) * 2 + // position, normal_i
+      sizeof(double) * 3; // area, gmres[2 * iter] @2 
   } 
 
   void *serialize(void *object, void *buffer) const override {
@@ -239,6 +237,17 @@ public:
     dest += bytes; 
 
     memcpy(dest, &n_gmres, bytes); 
+    dest += bytes; 
+
+    bytes = sizeof(Point); 
+    memcpy(dest, &(n->position), bytes); 
+    dest += bytes; 
+
+    memcpy(dest, &(n->normal_i), bytes); 
+    dest += bytes; 
+
+    bytes = sizeof(double); 
+    memcpy(dest, &(n->area), bytes); 
     dest += bytes; 
 
     bytes = sizeof(double) * 2; 
@@ -263,6 +272,17 @@ public:
     memcpy(&n_gmres, src, bytes); 
     src += bytes; 
     n->gmres.resize(n_gmres); 
+
+    bytes = sizeof(Point); 
+    memcpy(&(n->position), src, bytes); 
+    src += bytes; 
+
+    memcpy(&(n->normal_i), src, bytes); 
+    src += bytes; 
+
+    bytes = sizeof(double); 
+    memcpy(&(n->area), src, bytes); 
+    src += bytes; 
 
     bytes = sizeof(double) * 2; 
     double *v = reinterpret_cast<double *>(src); 
