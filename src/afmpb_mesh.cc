@@ -485,8 +485,8 @@ void AFMPB::generateGaussianPoint(const std::vector<Node> &nodes,
       int index = 7 * e.index + j; 
       double zeta = 1 - xi_[j] - eta_[j]; 
       double x = p1.x() * zeta + p2.x() * xi_[j] + p3.x() * eta_[j]; 
-      double y = p1.y() * zeta + p2.x() * xi_[j] + p3.x() * eta_[j]; 
-      double z = p1.z() * zeta + p2.x() * xi_[j] + p3.x() * eta_[j]; 
+      double y = p1.y() * zeta + p2.y() * xi_[j] + p3.y() * eta_[j]; 
+      double z = p1.z() * zeta + p2.z() * xi_[j] + p3.z() * eta_[j]; 
       gauss.emplace_back(index, Point{x, y, z}, e.normal); 
     }
   }
