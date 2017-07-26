@@ -372,7 +372,7 @@ void AFMPB::processElementGeometry(std::vector<Node> &nodes) {
 
     if (area > 0.00001) {
       // Normalize the normal 
-      e.normal = e.normal.scale(1.0 / area); 
+      e.normal = e.normal.scale(0.5 / area); 
 
       if (mesh_format_ == 2) { // OFF format 
         double s31 = sqrt(x31 * x31 + y31 * y31 + z31 * z31); 

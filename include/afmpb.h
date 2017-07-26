@@ -102,7 +102,7 @@ public:
     if (mesh_.is_open())
       mesh_.close();
 
-    if (!mesh_format_) {
+    if (mesh_format_) {
       delete [] xi_; 
       delete [] eta_; 
       delete [] weight_;

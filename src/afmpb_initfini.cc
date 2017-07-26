@@ -142,7 +142,7 @@ AFMPB::AFMPB(std::unique_ptr<Configuration> p) {
   processPQRFile(p->pqr_file); 
   log_.open(p->log_file); 
   potential_.open(p->potential_file); 
-  if (!p->mesh_format) 
+  if (p->mesh_format) 
     mesh_.open(p->mesh_file); 
 
   mesh_format_ = p->mesh_format; 
@@ -178,7 +178,7 @@ AFMPB::AFMPB(std::unique_ptr<Configuration> p) {
   sigma_ = 0.001; 
 
 
-  if (!mesh_format_) {
+  if (mesh_format_) {
     xi_ = new double[7]{0.101286507323456, 0.797426958353087, 
                         0.101286507323456, 0.470142064105115, 
                         0.059715871789770, 0.470142064105115, 1.0/3.0};
