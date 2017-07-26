@@ -150,7 +150,7 @@ double AFMPB::polarEnergy(const GNode *gauss, int ngauss,
       int i1 = e.nodes[0];
       int i2 = e.nodes[1];
       int i3 = e.nodes[2];
-      int index = e.index;
+      int index = e.index * 7;
       double temp = 0;
       for (int j = 0; j < 7; ++j) {
         double zeta = 1.0 - xi_[j] - eta_[j];
