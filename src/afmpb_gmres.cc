@@ -28,11 +28,9 @@ void AFMPB::solve() {
   using Serializer = dashmm::Serializer; 
   using NodeFullSerializer = dashmm::NodeFullSerializer; 
   using NodePartialSerializer = dashmm::NodePartialSerializer; 
-  using NodeMinimumSerializer = dashmm::NodeMinimumSerializer; 
 
   std::unique_ptr<Serializer> m_full{new NodeFullSerializer}; 
   std::unique_ptr<Serializer> m_part{new NodePartialSerializer}; 
-  std::unique_ptr<Serializer> m_min{new NodeMinimumSerializer}; 
 
   // Compute right-hand side b 
   dashmm::FMM97<Atom, Node, dashmm::AFMPBRHS> m_rhs{}; 
@@ -77,9 +75,6 @@ void AFMPB::solve() {
   t_dag = duration_cast<duration<double>>(t2 - t1).count(); 
 
   // Compute Ax0 and initial residual r0 = b - Ax0
-  err = nodes_.set_manager(std::move(m_part)); 
-  assert(err == dashmm::kSuccess); 
-
   t1 = high_resolution_clock::now();
   err = lhs.execute_DAG(tree, dag.get()); 
   assert(err == dashmm::kSuccess); 
@@ -102,7 +97,7 @@ void AFMPB::solve() {
 
   bool terminateLoop = false, computeSolution = false; 
 
-  err = nodes_.set_manager(std::move(m_min)); 
+  err = nodes_.set_manager(std::move(m_part)); 
   assert(err == dashmm::kSuccess); 
 
   while (true) {
