@@ -139,11 +139,14 @@ int finalize() {
 }
 
 AFMPB::AFMPB(std::unique_ptr<Configuration> p) {
-  processPQRFile(p->pqr_file); 
-  log_.open(p->log_file); 
-  potential_.open(p->potential_file); 
-  if (p->mesh_format) 
-    mesh_.open(p->mesh_file); 
+  // Process the input stream on rank 0 only 
+  if (hpx_get_my_rank() == 0) {
+    processPQRFile(p->pqr_file); 
+    log_.open(p->log_file); 
+    potential_.open(p->potential_file); 
+    if (p->mesh_format) 
+      mesh_.open(p->mesh_file); 
+  }
 
   mesh_format_ = p->mesh_format; 
   mesh_density_ = p->mesh_density; 
@@ -176,7 +179,6 @@ AFMPB::AFMPB(std::unique_ptr<Configuration> p) {
     cut2_ = 0.3;
   } 
   sigma_ = 0.001; 
-
 
   if (mesh_format_) {
     xi_ = new double[7]{0.101286507323456, 0.797426958353087, 

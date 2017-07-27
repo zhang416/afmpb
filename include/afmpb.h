@@ -96,12 +96,6 @@ class AFMPB {
 public:
   AFMPB(std::unique_ptr<Configuration> p); 
   ~AFMPB() {
-    pqr_.close(); 
-    log_.close(); 
-    potential_.close(); 
-    if (mesh_.is_open())
-      mesh_.close();
-
     if (mesh_format_) {
       delete [] xi_; 
       delete [] eta_; 
@@ -114,6 +108,14 @@ public:
   void collect(); 
   
   void finalize() {
+    if (hpx_get_my_rank() == 0) {
+      pqr_.close(); 
+      log_.close(); 
+      potential_.close(); 
+      if (mesh_.is_open())
+        mesh_.close();
+    }
+    
     assert(atoms_.destroy() == dashmm::kSuccess); 
     assert(gauss_.destroy() == dashmm::kSuccess); 
     assert(nodes_.destroy() == dashmm::kSuccess); 
