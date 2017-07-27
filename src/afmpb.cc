@@ -32,11 +32,12 @@ void AFMPB::setup() {
       << "----------------------------------------------------------------\n\n"
       << "Problem parameters:\n"
       << std::setw(50) << std::left << "... n_atoms:"
-      << std::setw(14) << std::right << natoms_ << "\n";
+      << std::setw(14) << std::right << natoms_ << "\n" << std::flush;
 
     if (mesh_format_) {
       log_ << std::setw(50) << std::left << "... n_elements:"
-           << std::setw(14) << std::right << elements_.size() << "\n";
+           << std::setw(14) << std::right << elements_.size() 
+           << "\n" << std::flush;
     }
 
     log_ << std::setw(50) << std::left << "... n_nodes:"
@@ -49,7 +50,7 @@ void AFMPB::setup() {
          << std::scientific << volume_ << "\n"
          << std::setw(50) << std::left << "... Kap: "
          << std::setw(14) << std::right << std::setprecision(5)
-         << std::scientific << kap_ << "\n";
+         << std::scientific << kap_ << "\n" << std::flush;
   } else {
     natoms_ = 0;
   }
@@ -119,7 +120,7 @@ void AFMPB::collect() {
        << std::scientific << polar << "\n"
        << std::setw(50) << std::left << "... Nonpolar part:"
        << std::setw(14) << std::right << std::setprecision(5)
-       << std::scientific << nonpolar << "\n";
+       << std::scientific << nonpolar << "\n" << std::flush;
 
   // Write potentials
   potential_.precision(8);

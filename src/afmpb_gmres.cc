@@ -54,7 +54,7 @@ void AFMPB::solve() {
     log_ << "\nSolver status:\n"
          << std::setw(50) << std::left << "... GMRES solver tolerance:"
          << std::setw(14) << std::right << std::setprecision(5) 
-         << std::scientific << tolerance << "\n"; 
+         << std::scientific << tolerance << "\n" << std::flush; 
   }
 
   // Create DAG for Ax computation
@@ -92,7 +92,7 @@ void AFMPB::solve() {
   if (!myrank) {
     log_ << std::setw(50) << std::left << "... Iteration   0 residual norm:" 
          << std::setw(14) << std::right << std::setprecision(5) 
-         << std::scientific << residual_[0] << "\n";
+         << std::scientific << residual_[0] << "\n" << std::flush;
   }
 
   bool terminateLoop = false, computeSolution = false; 
@@ -124,7 +124,8 @@ void AFMPB::solve() {
     if (!myrank) {
       log_ << "... Iteration " << std::setw(3) << nMV << std::setw(33) 
            << std::left << " residual norm:" << std::setw(14) << std::right 
-           << std::setprecision(5) << std::scientific << alpha << "\n"; 
+           << std::setprecision(5) << std::scientific << alpha 
+           << "\n" << std::flush; 
     }
 
     if (alpha < tolerance) {
@@ -132,19 +133,20 @@ void AFMPB::solve() {
       computeSolution = true;
 
       if (!myrank) 
-        log_ << "... GMRES solver has converged\n";
+        log_ << "... GMRES solver has converged\n" << std::flush;
     } else {
       if (nMV == maxMV_ - 1) {
         // Reach maximum allowed matrix-vector multiply 
         terminateLoop = true;
         
         if (!myrank) 
-          log_ << "... GMRES solver is terminated without convergence\n"; 
+          log_ << "... GMRES solver is terminated without convergence\n" 
+               << std::flush; 
       } else if (nMV % restart_ == restart_ - 1) {
         computeSolution = true;        
 
         if (!myrank) 
-          log_ << "... GMRES solver restarts\n"; 
+          log_ << "... GMRES solver restarts\n" << std::flush; 
       }
     }
 
@@ -184,7 +186,7 @@ void AFMPB::solve() {
          << std::scientific << t_exec << "\n"
          << std::setw(50) << std::left << "... t(GMRES):" 
          << std::setw(14) << std::right << std::setprecision(5) 
-         << std::scientific << t_gmres << "\n";
+         << std::scientific << t_gmres << "\n" << std::flush;
   }
 }
 
