@@ -1,6 +1,7 @@
 #include <iomanip>
 #include <cmath>
 #include <memory>
+#include <chrono>
 #include <hpx/hpx.h>
 #include "afmpb.h"
 #include "afmpb_lhs.h"
@@ -15,7 +16,12 @@ dashmm::Evaluator<Node, Node, dashmm::AFMPBLHS, dashmm::FMM97NL3> lhs{};
 dashmm::ArrayMapAction<Node, double> rhs_action{set_rhs}; 
 dashmm::ArrayMapAction<Node, double> r0_action{set_r0}; 
 
+using namespace std::chrono; 
+high_resolution_clock::time_point t1, t2; 
+
 void AFMPB::solve() {
+  double t_dag = 0.0, t_exec = 0.0, t_gmres = 0.0;
+
   int myrank = hpx_get_my_rank(); 
 
   // Solve Ax = b using restarted GMRES 
@@ -63,15 +69,22 @@ void AFMPB::solve() {
   kparam_lhs.push_back(cut2_);
   kparam_lhs.push_back(sigma_); 
   kparam_lhs.push_back(restart_); 
+
+  t1 = high_resolution_clock::now(); 
   auto tree = lhs.create_tree(nodes_, nodes_, refine_limit_); 
   auto dag = lhs.create_DAG(tree, accuracy_, &kparam_lhs, &m_lhs); 
+  t2 = high_resolution_clock::now(); 
+  t_dag = duration_cast<duration<double>>(t2 - t1).count(); 
 
   // Compute Ax0 and initial residual r0 = b - Ax0
   err = nodes_.set_manager(std::move(m_part)); 
   assert(err == dashmm::kSuccess); 
 
+  t1 = high_resolution_clock::now();
   err = lhs.execute_DAG(tree, dag.get()); 
   assert(err == dashmm::kSuccess); 
+  t2 = high_resolution_clock::now(); 
+  t_exec += duration_cast<duration<double>>(t2 - t1).count(); 
 
   err = lhs.reset_DAG(dag.get());  
   assert(err == dashmm::kSuccess); 
@@ -94,9 +107,13 @@ void AFMPB::solve() {
 
   while (true) {
     // Compute A * qk
+    t1 = high_resolution_clock::now(); 
     err = lhs.execute_DAG(tree, dag.get()); 
     assert(err == dashmm::kSuccess); 
-
+    t2 = high_resolution_clock::now(); 
+    t_exec += duration_cast<duration<double>>(t2 - t1).count(); 
+    
+    t1 = high_resolution_clock::now(); 
     // Orthogonalize the result against q0, ..., qk
     modifiedGramSchmidtReOrth(); 
 
@@ -142,6 +159,9 @@ void AFMPB::solve() {
         dashmm::builtin_afmpb_table_->increIter(); 
     } 
 
+    t2 = high_resolution_clock::now(); 
+    t_gmres += duration_cast<duration<double>>(t2 - t1).count(); 
+
     if (terminateLoop) {
       break;
     } else {
@@ -158,6 +178,19 @@ void AFMPB::solve() {
 
   // Solution is saved in iteration 0 slot
   dashmm::builtin_afmpb_table_->resetIter();
+
+  if (!myrank) {
+    log_ << "\nSolver statistics:\n"
+         << std::setw(50) << std::left << "... t(dag_construction):"
+         << std::setw(14) << std::right << std::setprecision(5)
+         << std::scientific << t_dag << "\n" 
+         << std::setw(50) << std::left << "... t(dag_execution):"
+         << std::setw(14) << std::right << std::setprecision(5) 
+         << std::scientific << t_exec << "\n"
+         << std::setw(50) << std::left << "... t(GMRES):" 
+         << std::setw(14) << std::right << std::setprecision(5) 
+         << std::scientific << t_gmres << "\n";
+  }
 }
 
 
