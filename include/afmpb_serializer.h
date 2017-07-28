@@ -203,6 +203,67 @@ public:
   }
 }; 
 
+class NodeMinimumSerializer : public Serializer {
+public: 
+  ~NodeMinimumSerializer() { } 
+
+  size_t size(void *object) const override {
+    return sizeof(int) + // Index 
+      + sizeof(Point) * 2 + // position, normal_o 
+      sizeof(double) * 2; // gmres[0]@2
+  }
+
+  void *serialize(void *object, void *buffer) const override {
+    afmpb::Node *n = reinterpret_cast<afmpb::Node *>(object); 
+    char *dest = reinterpret_cast<char *>(buffer); 
+    size_t bytes = 0; 
+
+    bytes = sizeof(int); 
+    memcpy(dest, &(n->index), bytes); 
+    dest += bytes; 
+
+    bytes = sizeof(Point); 
+    memcpy(dest, &(n->position), bytes); 
+    dest += bytes; 
+
+    memcpy(dest, &(n->normal_o), bytes); 
+    dest += bytes; 
+
+    bytes = sizeof(double) * 2; 
+    double *v = &(n->gmres[0]); 
+    memcpy(dest, v, bytes); 
+    dest += bytes; 
+
+    return dest;
+  }
+
+  void *deserialize(void *buffer, void *object) const override {
+    afmpb::Node *n = reinterpret_cast<afmpb::Node *>(object); 
+    char *src = reinterpret_cast<char *>(buffer); 
+    size_t bytes = 0; 
+
+    bytes = sizeof(int); 
+    memcpy(&(n->index), src, bytes); 
+    src += bytes; 
+
+    bytes = sizeof(Point); 
+    memcpy(&(n->position), src, bytes); 
+    src += bytes; 
+
+    memcpy(&(n->normal_o), src, bytes); 
+    src += bytes; 
+
+    n->gmres.resize(2); 
+    double *v = reinterpret_cast<double *>(src); 
+    n->gmres[0] = v[0]; 
+    n->gmres[1] = v[1]; 
+
+    src += sizeof(double) * 2; 
+
+    return src;
+  }
+}; 
+
 } // namespace dashmm
 
 

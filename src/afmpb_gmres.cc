@@ -28,9 +28,11 @@ void AFMPB::solve() {
   using Serializer = dashmm::Serializer; 
   using NodeFullSerializer = dashmm::NodeFullSerializer; 
   using NodePartialSerializer = dashmm::NodePartialSerializer; 
+  using NodeMinimumSerializer = dashmm::NodeMinimumSerializer; 
 
   std::unique_ptr<Serializer> m_full{new NodeFullSerializer}; 
-  std::unique_ptr<Serializer> m_part{new NodePartialSerializer}; 
+  std::unique_ptr<Serializer> m_part{new NodePartialSerializer};
+  std::unique_ptr<Serializer> m_min{new NodeMinimumSerializer}; 
 
   // Compute right-hand side b 
   dashmm::FMM97<Atom, Node, dashmm::AFMPBRHS> m_rhs{}; 
@@ -175,6 +177,10 @@ void AFMPB::solve() {
 
   // Solution is saved in iteration 0 slot
   dashmm::builtin_afmpb_table_->resetIter();
+
+  // Update serialization manager 
+  err = nodes_.set_manager(std::move(m_min)); 
+  assert(err == dashmm::kSuccess); 
 
   if (!myrank) {
     log_ << "\nSolver statistics:\n"
