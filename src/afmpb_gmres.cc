@@ -102,6 +102,8 @@ void AFMPB::solve() {
   err = nodes_.set_manager(std::move(m_part)); 
   assert(err == dashmm::kSuccess); 
 
+  int gmres_iterator = 1; 
+
   while (true) {
     // Compute A * qk
     t1 = high_resolution_clock::now(); 
@@ -121,13 +123,13 @@ void AFMPB::solve() {
     // Compute the new residual norm 
     double alpha = fabs(updateResidualNorm()); 
 
-    int nMV = dashmm::builtin_afmpb_table_->increFetchIter(); 
+    dashmm::builtin_afmpb_table_->increIter(); 
 
     if (!myrank) {
-      log_ << "... Iteration " << std::setw(3) << nMV << std::setw(33) 
-           << std::left << " residual norm:" << std::setw(14) << std::right 
-           << std::setprecision(5) << std::scientific << alpha 
-           << "\n" << std::flush; 
+      log_ << "... Iteration " << std::setw(3) << gmres_iterator 
+           << std::setw(33) << std::left << " residual norm:" 
+           << std::setw(14) << std::right << std::setprecision(5) 
+           << std::scientific << alpha << "\n" << std::flush; 
     }
 
     if (alpha < tolerance) {
@@ -137,14 +139,14 @@ void AFMPB::solve() {
       if (!myrank) 
         log_ << "... GMRES solver has converged\n" << std::flush;
     } else {
-      if (nMV == maxMV_ - 1) {
+      if (gmres_iterator == maxMV_ ) {
         // Reach maximum allowed matrix-vector multiply 
         terminateLoop = true;
         
         if (!myrank) 
           log_ << "... GMRES solver is terminated without convergence\n" 
                << std::flush; 
-      } else if (nMV % restart_ == restart_ - 1) {
+      } else if (gmres_iterator % restart_ == 0) {
         computeSolution = true;        
 
         if (!myrank) 
@@ -156,6 +158,9 @@ void AFMPB::solve() {
       assert(computeApproxSolution() == 0); 
       if (!terminateLoop) 
         dashmm::builtin_afmpb_table_->increIter(); 
+
+      // Reset the flag
+      computeSolution = false; 
     } 
 
     t2 = high_resolution_clock::now(); 
@@ -166,6 +171,8 @@ void AFMPB::solve() {
     } else {
       err = lhs.reset_DAG(dag.get());  
     }    
+
+    gmres_iterator++; 
   }
 
   // Cleanup 

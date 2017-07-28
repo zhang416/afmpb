@@ -38,7 +38,6 @@ public:
   int s_iter() const {return iter_ % restart_;} 
   int t_iter() const {return (iter_ + 1) % restart_;} 
   void resetIter() {iter_ = 0;}
-  int increFetchIter() {iter_++; return iter_;} 
   void increIter() {iter_++;} 
 
 private:
