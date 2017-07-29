@@ -35,8 +35,8 @@ public:
   double cut1() const {return cut1_;}
   double cut2() const {return cut2_;}
   double sigma() const {return sigma_;}
-  int s_iter() const {return iter_ % restart_;} 
-  int t_iter() const {return (iter_ + 1) % restart_;} 
+  int s_iter() const {return iter_;} 
+  int t_iter() const {return iter_ + 1;} 
   void resetIter() {iter_ = 0;}
   void increIter() {iter_++;} 
 

@@ -177,7 +177,7 @@ void AFMPB::generateMesh(int s, const Atom *molecule,
       node.patch.emplace_back(Point{p4x, p4y, p4z}, Point{v14, v24, v34}, p3); 
 
       node.index = nodes.size(); 
-      node.gmres.resize(restart_ * 2); 
+      node.gmres.resize((restart_  + 1) * 2); 
       nodes.push_back(node); 
     }
   }
@@ -320,7 +320,7 @@ void AFMPB::removeIsolatedNodes(std::vector<Node> &nodes) {
 
   // Resize the gmres buffer for each remained node 
   for (int i = 0; i < nodes.size(); ++i) 
-    nodes[i].gmres.resize(restart_ * 2); 
+    nodes[i].gmres.resize((restart_ + 1) * 2); 
 }
 
 void AFMPB::processElementGeometry(std::vector<Node> &nodes) {

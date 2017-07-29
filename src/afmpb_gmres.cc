@@ -20,9 +20,13 @@ using namespace std::chrono;
 high_resolution_clock::time_point t1, t2; 
 
 void AFMPB::solve() {
+  int myrank = hpx_get_my_rank(); 
+
   double t_dag = 0.0, t_exec = 0.0, t_gmres = 0.0;
 
-  int myrank = hpx_get_my_rank(); 
+  bool terminate = false, converged = false, compute = false; 
+
+  int n_restarted = 0; 
 
   // Solve Ax = b using restarted GMRES 
   using Serializer = dashmm::Serializer; 
@@ -45,7 +49,7 @@ void AFMPB::solve() {
                      accuracy_, &kparam_rhs); 
   assert(err == dashmm::kSuccess); 
 
-  // Set initial guess x0 = b 
+  // Scale b, let x0 = b, and copy x0 into q0 slot of Krylov basis
   nodes_.map(rhs_action, &dielectric_exterior_); 
 
   // Compute 2-norm of the rhs, setup tolerance for GMRES 
@@ -76,104 +80,105 @@ void AFMPB::solve() {
   t2 = high_resolution_clock::now(); 
   t_dag = duration_cast<duration<double>>(t2 - t1).count(); 
 
-  // Compute Ax0 and initial residual r0 = b - Ax0
-  t1 = high_resolution_clock::now();
-  err = lhs.execute_DAG(tree, dag.get()); 
-  assert(err == dashmm::kSuccess); 
-  t2 = high_resolution_clock::now(); 
-  t_exec += duration_cast<duration<double>>(t2 - t1).count(); 
+  while (terminate == false) {
+    dashmm::builtin_afmpb_tabl_->resetIter(); 
 
-  err = lhs.reset_DAG(dag.get());  
-  assert(err == dashmm::kSuccess); 
-
-  nodes_.map(r0_action, (double *)nullptr); 
-  
-  // Compute 2-norm of r0, normalize it to q0
-  residual_[0] = generalizedInnerProduct(0, 0); 
-
-  if (!myrank) {
-    log_ << std::setw(50) << std::left << "... Iteration   0 residual norm:" 
-         << std::setw(14) << std::right << std::setprecision(5) 
-         << std::scientific << residual_[0] << "\n" << std::flush;
-  }
-
-  bool terminateLoop = false, computeSolution = false; 
-
-  err = nodes_.set_manager(std::move(m_part)); 
-  assert(err == dashmm::kSuccess); 
-
-  int gmres_iterator = 1; 
-
-  while (true) {
-    // Compute A * qk
+    // Compute Ax0 
     t1 = high_resolution_clock::now(); 
     err = lhs.execute_DAG(tree, dag.get()); 
     assert(err == dashmm::kSuccess); 
     t2 = high_resolution_clock::now(); 
     t_exec += duration_cast<duration<double>>(t2 - t1).count(); 
-    
-    t1 = high_resolution_clock::now(); 
-    // Orthogonalize the result against q0, ..., qk
-    modifiedGramSchmidtReOrth(); 
 
-    // Apply previous Givens rotations on the new column of Hessenberg matrix
-    // and generate a new one to eliminate the subdiagonal element
-    applyGivensRotation(); 
-    
-    // Compute the new residual norm 
-    double alpha = fabs(updateResidualNorm()); 
+    err = lhs.reset_DAG(dag.get()); 
+    assert(err == dashmm::kSuccess); 
 
-    dashmm::builtin_afmpb_table_->increIter(); 
+    // Compute r0 = b - Ax0
+    node_.map(r0_action, (double *)nullptr); 
+
+    // Compute 2-norm of r0 and normalize r0 to q0 
+    residual_[0] = generalizedInnerProduct(0, 0); 
 
     if (!myrank) {
-      log_ << "... Iteration " << std::setw(3) << gmres_iterator 
-           << std::setw(33) << std::left << " residual norm:" 
+      log_ << "... Iteration " << std::setw(3) 
+           << n_restarted * (restart_ + 1) 
+           << std::setw(33) << std::left << " residual norm:"
            << std::setw(14) << std::right << std::setprecision(5) 
-           << std::scientific << alpha << "\n" << std::flush; 
+           << std::scientific << residual_[0] << "\n" << std::flush;
     }
 
-    if (alpha < tolerance) {
-      terminateLoop = true; 
-      computeSolution = true;
+    if (n_restarted == 0) {
+      // Update the manager once the cached value is computed 
+      err = nodes_.set_manager(std::move(m_part)); 
+      assert(err == dashmm::kSuccess); 
+    }
 
-      if (!myrank) 
-        log_ << "... GMRES solver has converged\n" << std::flush;
-    } else {
-      if (gmres_iterator == maxMV_ ) {
-        // Reach maximum allowed matrix-vector multiply 
-        terminateLoop = true;
-        
-        if (!myrank) 
-          log_ << "... GMRES solver is terminated without convergence\n" 
-               << std::flush; 
-      } else if (gmres_iterator % restart_ == 0) {
-        computeSolution = true;        
+    for (int k = 1; k <= restart_; ++k) {
+      // Compute A * q_{k-1}
+      t1 = high_resolution_clock::now(); 
+      err = lhs.execute_DAG(tree, dag.get()); 
+      assert(err == dashmm::kSuccess); 
+      t2 = high_resolution_clock::now(); 
+      t_exec += duration_cast<duration<double>>(t2 - t1).count(); 
 
-        if (!myrank) 
-          log_ << "... GMRES solver restarts\n" << std::flush; 
+      t1 = high_resolution_clock::now(); 
+      // Orthogonalize the result against q0, ..., q_{k-1} 
+      modifiedGramSchmidtReOrth(); 
+
+      // Apply previous Givens rotations on the new column of the Hessenberg
+      // matrix and generate a new one to eliminate the subdiagonal element 
+      applyGivensRotation(); 
+
+      // Compute the new residual norm
+      double alpha = fabs(updateResidualNorm()); 
+      t2 = high_resolution_clock::now(); 
+      t_gmres += duration_cast<duration<double>>(t2 - t1).count();  
+
+      if (!myrank) {
+        log_ << "... Iteration " << std::setw(3) 
+             << n_restarted * (restart_ + 1) * k 
+             << std::setw(33) << std::left << " residual norm:"
+             << std::setw(14) << std::right << std::setprecision(5)
+             << std::scientific << alpha << "\n" << std::flush;
+      }
+
+      if (alpha < tolerance) {
+        terminate = true; 
+        converged = true; 
+        compute = true;
+        break;
+      } 
+
+      dashmm::builtin_afmpb_table_->increIter(); 
+
+      // Reset the DAG when alpha is above tolerance 
+      err = lhs.reset_DAG(dag.get()); 
+    }
+
+    if (alpha >= tolerance) {      
+      if (n_restarted < max_restart_) {
+        compute = true;
+        n_restarted++;
+      } else {
+        terminate = true;
       }
     }
 
-    if (computeSolution) {
+    if (compute) {
       assert(computeApproxSolution() == 0); 
-      if (!terminateLoop) 
-        dashmm::builtin_afmpb_table_->increIter(); 
-
-      // Reset the flag
-      computeSolution = false; 
-    } 
-
-    t2 = high_resolution_clock::now(); 
-    t_gmres += duration_cast<duration<double>>(t2 - t1).count(); 
-
-    if (terminateLoop) {
-      break;
-    } else {
-      err = lhs.reset_DAG(dag.get());  
-    }    
-
-    gmres_iterator++; 
+      compute = false; 
+    }
   }
+
+  if (!myrank) {
+    if (converged) {
+      log_ << "... GMRES solver has converged\n" << std::flush;
+    } else {
+      log_ << "... GMRES solver is terminated without convergence\n"
+           << std::flush;
+    }
+  }
+
 
   // Cleanup 
   err = lhs.destroy_DAG(tree, std::move(dag)); 
@@ -181,9 +186,6 @@ void AFMPB::solve() {
 
   err = lhs.destroy_tree(tree); 
   assert(err == dashmm::kSuccess); 
-
-  // Solution is saved in iteration 0 slot
-  dashmm::builtin_afmpb_table_->resetIter();
 
   // Update serialization manager 
   err = nodes_.set_manager(std::move(m_min)); 
@@ -310,7 +312,7 @@ double AFMPB::updateResidualNorm() {
 }
 
 int AFMPB::computeApproxSolution() {
-  int k = dashmm::builtin_afmpb_table_->s_iter(); 
+  int k = dashmm::builtin_afmpb_table_->t_iter(); 
 
   // [Aq_0, ..., Aq_{k - 1}] = [q_0, ..., q_{k - 1}, q_k] * hess_; 
   
@@ -330,6 +332,7 @@ int AFMPB::computeApproxSolution() {
   if (k < 0) // Triangular system has null rank
     return -1;
 
+
   // Backward solve of the triangular system, overwrite residual_ 
   for (int i = k - 1; i >= 0; i--) {
     int hidx = i * (i + 1) / 2; // hess_{0, i} 
@@ -341,6 +344,7 @@ int AFMPB::computeApproxSolution() {
 
   // Compute linear combination y_0 * q_0 + ... + y_{k - 1} * q_{k - 1}
   linearCombination(k - 1);    
+
 
   return 0;
 }

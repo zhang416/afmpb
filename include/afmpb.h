@@ -69,8 +69,8 @@ struct Node {
   double area = 0.0;                // Area of the patch for the node 
   double projected = 0.0;           // Projected area 
   double rhs[2] = {0.0};            // AFMPBRHS expansion result 
-  std::vector<double> gmres;        // GMRES working buffer, including
-                                    // input, output, and Krylov basis
+  double x0[2] = {0.0};             // Initial guess of the GMRES solver 
+  std::vector<double> gmres;        // Krylov basis 
   std::map<int, std::vector<double>> cached; // Cached values for S_to_T
 }; 
 
@@ -176,7 +176,8 @@ private:
   std::vector<double> cosine_;   // Cosine values for the Givens rotation
   std::vector<double> sine_;     // Sine values for the Givens rotation
   std::vector<double> residual_; // Residual norm 
-  int maxMV_;                    // Maximum number of matrix-vector multiply
+  //int maxMV_;                    // Maximum number of matrix-vector multiply
+  int max_restart_;              // Maximum number of time GMRES can restart
   double rel_tolerance_;      
   double abs_tolerance_; 
   hpx_addr_t reducer_;           // For inner product computation

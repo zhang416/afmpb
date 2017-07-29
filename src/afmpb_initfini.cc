@@ -160,7 +160,8 @@ AFMPB::AFMPB(std::unique_ptr<Configuration> p) {
   pressure_ = p->pressure; 
   accuracy_ = p->accuracy; 
   restart_ = p->restart; 
-  maxMV_ = (p->max_restart + 1) * restart_; 
+  max_restart_ = p->max_restart; 
+  //maxMV_ = (p->max_restart + 1) * restart_; 
   rel_tolerance_ = p->rel_tolerance; 
   abs_tolerance_ = p->abs_tolerance; 
 
@@ -195,7 +196,7 @@ AFMPB::AFMPB(std::unique_ptr<Configuration> p) {
   hess_.resize(restart_ * (restart_ + 1) / 2 + 1); 
   cosine_.resize(restart_); 
   sine_.resize(restart_); 
-  residual_.resize(restart_ + 1); 
+  residual_.resize(restart_ + 2); 
 
   hpx_run(&allocate_reducer_, &reducer_); 
 
