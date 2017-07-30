@@ -18,7 +18,7 @@ public:
     retval = sizeof(int) * 3 + // Index, n_patches,  gmres buffer size
       sizeof(Point) * 3 + // position, normal_i and normal_o 
       sizeof(afmpb::Patch) * n->patch.size() + // patch 
-      sizeof(double) * 6; // area, projected, rhs[0]@, gmres[0]@2
+      sizeof(double) * 8; // area, projected, rhs[0]@2, x0@[2], gmres[0]@2
     return retval; 
   }
 
@@ -61,6 +61,9 @@ public:
     dest += bytes; 
 
     memcpy(dest, &(n->rhs[0]), bytes * 2); 
+    dest += bytes * 2; 
+
+    memcpy(dest, &(n->x0[0]), bytes * 2); 
     dest += bytes * 2; 
 
     double *gmres = n->gmres.data(); 
@@ -111,6 +114,9 @@ public:
     src += bytes; 
 
     memcpy(n->rhs, src, bytes * 2); 
+    src += bytes * 2; 
+    
+    memcpy(n->x0, src, bytes * 2); 
     src += bytes * 2; 
 
     double *v = reinterpret_cast<double *>(src); 

@@ -81,7 +81,7 @@ void AFMPB::solve() {
   t_dag = duration_cast<duration<double>>(t2 - t1).count(); 
 
   while (terminate == false) {
-    dashmm::builtin_afmpb_tabl_->resetIter(); 
+    dashmm::builtin_afmpb_table_->resetIter(); 
 
     // Compute Ax0 
     t1 = high_resolution_clock::now(); 
@@ -94,7 +94,7 @@ void AFMPB::solve() {
     assert(err == dashmm::kSuccess); 
 
     // Compute r0 = b - Ax0
-    node_.map(r0_action, (double *)nullptr); 
+    nodes_.map(r0_action, (double *)nullptr); 
 
     // Compute 2-norm of r0 and normalize r0 to q0 
     residual_[0] = generalizedInnerProduct(0, 0); 
@@ -113,6 +113,9 @@ void AFMPB::solve() {
       assert(err == dashmm::kSuccess); 
     }
 
+
+    double alpha; 
+
     for (int k = 1; k <= restart_; ++k) {
       // Compute A * q_{k-1}
       t1 = high_resolution_clock::now(); 
@@ -130,13 +133,13 @@ void AFMPB::solve() {
       applyGivensRotation(); 
 
       // Compute the new residual norm
-      double alpha = fabs(updateResidualNorm()); 
+      alpha = fabs(updateResidualNorm()); 
       t2 = high_resolution_clock::now(); 
       t_gmres += duration_cast<duration<double>>(t2 - t1).count();  
 
       if (!myrank) {
         log_ << "... Iteration " << std::setw(3) 
-             << n_restarted * (restart_ + 1) * k 
+             << n_restarted * (restart_ + 1) + k 
              << std::setw(33) << std::left << " residual norm:"
              << std::setw(14) << std::right << std::setprecision(5)
              << std::scientific << alpha << "\n" << std::flush;
