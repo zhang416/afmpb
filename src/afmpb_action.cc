@@ -105,24 +105,17 @@ int linear_combination_handler(hpx_addr_t data, double *c, int k) {
   size_t count = local->local_count; 
 
   for (int i = 0; i < count; ++i) {
-    /*
-    nodes[i].gmres[0] *= c[0]; 
-    nodes[i].gmres[1] *= c[0]; 
-    for (int j = 1; j <= k; ++j) {
-      nodes[i].gmres[0] += c[j] * nodes[i].gmres[2 * j]; 
-      nodes[i].gmres[1] += c[j] * nodes[i].gmres[2 * j + 1];
-    }
-
-    // Add the result to the initial guess, which is saved in rhs
-    nodes[i].gmres[0] += nodes[i].rhs[0]; 
-    nodes[i].gmres[1] += nodes[i].rhs[1]; 
-    */
     for (int j = 0; j <= k; ++j) {
       nodes[i].x0[0] += c[j] * nodes[i].gmres[2 * j]; 
       nodes[i].x0[1] += c[j] * nodes[i].gmres[2 * j + 1];
-    }
 
-    // Copye the new guess to q0 slot 
+      nodes[i].gmres[2 * j] = 0.0; 
+      nodes[i].gmres[2 * j + 1] = 0.0; 
+    }
+    nodes[i].gmres[2 * k + 2] = 0.0; 
+    nodes[i].gmres[2 * k + 3] = 0.0; 
+
+    // Copy the new guess to q0 slot 
     nodes[i].gmres[0] = nodes[i].x0[0]; 
     nodes[i].gmres[1] = nodes[i].x0[1]; 
   }
@@ -135,15 +128,6 @@ HPX_ACTION(HPX_DEFAULT, HPX_ATTR_NONE, linear_combination_,
 
 
 void set_rhs(Node *n, const size_t count, const double *dielectric) {
-  /*
-  for (int i = 0; i < count; ++i) {
-    n[i].rhs[0] /= (*dielectric); 
-    n[i].rhs[1] /= (*dielectric); 
-    
-    n[i].gmres[0] = n[i].rhs[0]; 
-    n[i].gmres[1] = n[i].rhs[1]; 
-  }
-  */
   for (int i = 0; i < count; ++i) {
     n[i].rhs[0] /= (*dielectric); 
     n[i].rhs[1] /= (*dielectric); 
@@ -152,7 +136,7 @@ void set_rhs(Node *n, const size_t count, const double *dielectric) {
     n[i].x0[1] = n[i].rhs[1]; 
 
     n[i].gmres[0] = n[i].rhs[0]; 
-    n[i].gmres[0] = n[i].rhs[1]; 
+    n[i].gmres[1] = n[i].rhs[1]; 
   }
 }
 

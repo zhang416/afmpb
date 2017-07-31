@@ -100,6 +100,9 @@ void AFMPB::solve() {
     residual_[0] = generalizedInnerProduct(0, 0); 
 
     if (!myrank) {
+      if (n_restarted) 
+        log_ << "... GMRES solver restarts\n" << std::flush;
+
       log_ << "... Iteration " << std::setw(3) 
            << n_restarted * (restart_ + 1) 
            << std::setw(33) << std::left << " residual norm:"
@@ -168,7 +171,7 @@ void AFMPB::solve() {
     }
 
     if (compute) {
-      assert(computeApproxSolution() == 0); 
+      assert(computeApproxSolution(converged) == 0); 
       compute = false; 
     }
   }
@@ -314,8 +317,9 @@ double AFMPB::updateResidualNorm() {
   return residual_[k + 1]; 
 }
 
-int AFMPB::computeApproxSolution() {
-  int k = dashmm::builtin_afmpb_table_->t_iter(); 
+int AFMPB::computeApproxSolution(bool converged) {
+  int k = (converged ? dashmm::builtin_afmpb_table_->t_iter() : 
+           dashmm::builtin_afmpb_table_->s_iter()); 
 
   // [Aq_0, ..., Aq_{k - 1}] = [q_0, ..., q_{k - 1}, q_k] * hess_; 
   

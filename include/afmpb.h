@@ -140,7 +140,7 @@ private:
   void applyGivensRotation(); 
   void generateGivensRotation(double &x, double &y); 
   double updateResidualNorm(); 
-  int computeApproxSolution(); 
+  int computeApproxSolution(bool converged); 
   void linearCombination(int k); 
 
 private: 
