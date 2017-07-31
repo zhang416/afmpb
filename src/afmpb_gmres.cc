@@ -22,8 +22,6 @@ high_resolution_clock::time_point t1, t2;
 bool AFMPB::solve() {
   int myrank = hpx_get_my_rank(); 
 
-  double t_dag = 0.0, t_exec = 0.0, t_gmres = 0.0;
-
   bool terminate = false, converged = false, compute = false; 
 
   int n_restarted = 0; 
@@ -83,7 +81,7 @@ bool AFMPB::solve() {
   auto tree = lhs.create_tree(nodes_, nodes_, refine_limit_); 
   auto dag = lhs.create_DAG(tree, accuracy_, &kparam_lhs, &m_lhs); 
   t2 = high_resolution_clock::now(); 
-  t_dag = duration_cast<duration<double>>(t2 - t1).count(); 
+  t_dag_ = duration_cast<duration<double>>(t2 - t1).count(); 
 
   while (terminate == false) {
     dashmm::builtin_afmpb_table_->resetIter(); 
@@ -93,7 +91,7 @@ bool AFMPB::solve() {
     err = lhs.execute_DAG(tree, dag.get()); 
     assert(err == dashmm::kSuccess); 
     t2 = high_resolution_clock::now(); 
-    t_exec += duration_cast<duration<double>>(t2 - t1).count(); 
+    t_exec_ += duration_cast<duration<double>>(t2 - t1).count(); 
 
     err = lhs.reset_DAG(dag.get()); 
     assert(err == dashmm::kSuccess); 
@@ -103,6 +101,7 @@ bool AFMPB::solve() {
 
     // Compute 2-norm of r0 and normalize r0 to q0 
     residual_[0] = generalizedInnerProduct(0, 0); 
+    n_inner_++;
 
     if (!myrank) {
       if (n_restarted) 
@@ -130,7 +129,7 @@ bool AFMPB::solve() {
       err = lhs.execute_DAG(tree, dag.get()); 
       assert(err == dashmm::kSuccess); 
       t2 = high_resolution_clock::now(); 
-      t_exec += duration_cast<duration<double>>(t2 - t1).count(); 
+      t_exec_ += duration_cast<duration<double>>(t2 - t1).count(); 
 
       t1 = high_resolution_clock::now(); 
       // Orthogonalize the result against q0, ..., q_{k-1} 
@@ -143,7 +142,7 @@ bool AFMPB::solve() {
       // Compute the new residual norm
       alpha = fabs(updateResidualNorm()); 
       t2 = high_resolution_clock::now(); 
-      t_gmres += duration_cast<duration<double>>(t2 - t1).count();  
+      t_gmres_ += duration_cast<duration<double>>(t2 - t1).count();  
 
       if (!myrank) {
         log_ << "... Iteration " << std::setw(3) 
@@ -182,7 +181,11 @@ bool AFMPB::solve() {
     }
 
     if (compute) {
+      t1 = high_resolution_clock::now(); 
       assert(computeApproxSolution(converged) == 0); 
+      t2 = high_resolution_clock::now(); 
+      t_gmres_ += duration_cast<duration<double>>(t2 - t1).count(); 
+
       compute = false; 
     }
   }
@@ -211,13 +214,19 @@ bool AFMPB::solve() {
     log_ << "\nSolver statistics:\n"
          << std::setw(50) << std::left << "... t(dag_construction):"
          << std::setw(14) << std::right << std::setprecision(5)
-         << std::scientific << t_dag << "\n" 
+         << std::scientific << t_dag_ << "\n" 
          << std::setw(50) << std::left << "... t(dag_execution):"
          << std::setw(14) << std::right << std::setprecision(5) 
-         << std::scientific << t_exec << "\n"
+         << std::scientific << t_exec_ << "\n"
          << std::setw(50) << std::left << "... t(GMRES):" 
          << std::setw(14) << std::right << std::setprecision(5) 
-         << std::scientific << t_gmres << "\n" << std::flush;
+         << std::scientific << t_gmres_ << "\n" 
+         << std::setw(50) << std::left << "...... t(inner_product):"
+         << std::setw(14) << std::right << std::setprecision(5) 
+         << std::scientific << t_inner_ << "\n"
+         << std::setw(50) << std::left << "...... n(inner_product):"
+         << std::setw(14) << std::right << n_inner_ 
+         << "\n" << std::flush;
   }
 
   return (converged ? true : false); 
@@ -232,6 +241,7 @@ void AFMPB::modifiedGramSchmidtReOrth() {
   // Compute the square of the 2-norm of the input vector A * q_k, without
   // normalizing it
   double Aqk_norm2 = generalizedInnerProduct(k + 1, -(k + 1)); 
+  n_inner_++; 
 
   // Threhold for performing re-orthogonalization. If the cosine between the two
   // vectors is greather than 0.99, (0.98 = 0.99^2), re-orthogonalization is
@@ -247,11 +257,13 @@ void AFMPB::modifiedGramSchmidtReOrth() {
     // h_{i, k} = <Aq_k, q_i> 
     // Aq_k = Aq_k - h_{i, k} * q_i
     hess_[hidx] = generalizedInnerProduct(k + 1, i); 
+    n_inner_++;
 
     if (hess_[hidx] * hess_[hidx] > threshold) {
       // Reorthogonalization 
       double temp = generalizedInnerProduct(k + 1, i); 
       hess_[hidx] += temp;
+      n_inner_++;
     }
 
     Aqk_norm2 -= hess_[hidx] * hess_[hidx]; 
@@ -265,6 +277,7 @@ void AFMPB::modifiedGramSchmidtReOrth() {
 
   // Normalize the resulting vector
   Aqk_norm2 = generalizedInnerProduct(k + 1, k + 1); 
+  n_inner_++;
   hess_[hidx] = Aqk_norm2; 
 }
 

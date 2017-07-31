@@ -180,6 +180,11 @@ private:
   double rel_tolerance_;      
   double abs_tolerance_; 
   hpx_addr_t reducer_;           // For inner product computation
+  double t_dag_; 
+  double t_exec_; 
+  double t_gmres_; 
+  double t_inner_; 
+  int n_inner_; 
 
   int natoms_; 
   int nnodes_; 

@@ -1,3 +1,4 @@
+#include <chrono> 
 #include <cassert>
 #include "afmpb.h"
 #include "dashmm/arraymetadata.h"
@@ -151,9 +152,17 @@ void set_r0(Node *n, const size_t count, const double *unused) {
 }
 
 double AFMPB::generalizedInnerProduct(int x, int y) {
+  using namespace std::chrono; 
+  high_resolution_clock::time_point t1, t2; 
+
   double retval = 0.0; 
   hpx_addr_t data = nodes_.data(); 
+
+  t1 = high_resolution_clock::now(); 
   hpx_run_spmd(&inner_product_, &retval, &data, &reducer_, &x, &y); 
+  t2 = high_resolution_clock::now(); 
+  t_inner_ += duration_cast<duration<double>>(t2 - t1).count(); 
+
   hpx_run(&reset_reducer_, nullptr, &reducer_); 
 
   return retval;

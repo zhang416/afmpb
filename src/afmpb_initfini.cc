@@ -200,6 +200,12 @@ AFMPB::AFMPB(std::unique_ptr<Configuration> p) {
   hpx_run(&allocate_reducer_, &reducer_); 
 
   setup(); 
+
+  t_dag_ = 0.0; 
+  t_exec_ = 0.0; 
+  t_gmres_ = 0.0; 
+  t_inner_ = 0.0; 
+  n_inner_ = 0; 
 }
 
 } // namespace afmpb
