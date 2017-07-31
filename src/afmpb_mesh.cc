@@ -370,7 +370,7 @@ void AFMPB::processElementGeometry(std::vector<Node> &nodes) {
     volume_ += ((x1 + x2 + x3) * a + (y1 + y2 + y3) * b + 
                 (z1 + z2 + z3) * c) / 18.0;
 
-    if (area > 0.00001) {
+    if (area > 1e-7) {
       // Normalize the normal 
       e.normal = e.normal.scale(0.5 / area); 
 

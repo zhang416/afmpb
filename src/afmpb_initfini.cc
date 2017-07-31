@@ -161,7 +161,6 @@ AFMPB::AFMPB(std::unique_ptr<Configuration> p) {
   accuracy_ = p->accuracy; 
   restart_ = p->restart; 
   max_restart_ = p->max_restart; 
-  //maxMV_ = (p->max_restart + 1) * restart_; 
   rel_tolerance_ = p->rel_tolerance; 
   abs_tolerance_ = p->abs_tolerance; 
 

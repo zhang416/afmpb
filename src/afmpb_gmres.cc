@@ -19,7 +19,7 @@ dashmm::ArrayMapAction<Node, double> r0_action{set_r0};
 using namespace std::chrono; 
 high_resolution_clock::time_point t1, t2; 
 
-void AFMPB::solve() {
+bool AFMPB::solve() {
   int myrank = hpx_get_my_rank(); 
 
   double t_dag = 0.0, t_exec = 0.0, t_gmres = 0.0;
@@ -60,7 +60,12 @@ void AFMPB::solve() {
     log_ << "\nSolver status:\n"
          << std::setw(50) << std::left << "... GMRES solver tolerance:"
          << std::setw(14) << std::right << std::setprecision(5) 
-         << std::scientific << tolerance << "\n" << std::flush; 
+         << std::scientific << tolerance << "\n" 
+         << std::setw(50) << std::left << "... GMRES restart:" 
+         << std::setw(14) << std::right << restart_ + 1<< "\n" 
+         << std::setw(50) << std::left << "... GMRES maximum iterations:"
+         << std::setw(14) << std::right << (restart_ + 1) * (max_restart_ + 1)
+         << "\n" << std::flush; 
   }
 
   // Create DAG for Ax computation
@@ -157,8 +162,14 @@ void AFMPB::solve() {
 
       dashmm::builtin_afmpb_table_->increIter(); 
 
-      // Reset the DAG when alpha is above tolerance 
-      err = lhs.reset_DAG(dag.get()); 
+      // Here, alpha is above the tolerance. Reset the DAG if GMRES has not
+      // reached maximum allowed matrix-vector multiply
+      bool reset_dag = true; 
+      if (k == restart_ && n_restarted == max_restart_) 
+        reset_dag = false; 
+
+      if (reset_dag) 
+        err = lhs.reset_DAG(dag.get()); 
     }
 
     if (alpha >= tolerance) {      
@@ -185,7 +196,6 @@ void AFMPB::solve() {
     }
   }
 
-
   // Cleanup 
   err = lhs.destroy_DAG(tree, std::move(dag)); 
   assert(err == dashmm::kSuccess); 
@@ -197,7 +207,7 @@ void AFMPB::solve() {
   err = nodes_.set_manager(std::move(m_min)); 
   assert(err == dashmm::kSuccess); 
 
-  if (!myrank) {
+  if (!myrank && converged) {
     log_ << "\nSolver statistics:\n"
          << std::setw(50) << std::left << "... t(dag_construction):"
          << std::setw(14) << std::right << std::setprecision(5)
@@ -209,6 +219,8 @@ void AFMPB::solve() {
          << std::setw(14) << std::right << std::setprecision(5) 
          << std::scientific << t_gmres << "\n" << std::flush;
   }
+
+  return (converged ? true : false); 
 }
 
 

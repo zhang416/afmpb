@@ -103,7 +103,7 @@ public:
     }
   }
   
-  void solve(); 
+  bool solve(); 
 
   void collect(); 
   
@@ -176,7 +176,6 @@ private:
   std::vector<double> cosine_;   // Cosine values for the Givens rotation
   std::vector<double> sine_;     // Sine values for the Givens rotation
   std::vector<double> residual_; // Residual norm 
-  //int maxMV_;                    // Maximum number of matrix-vector multiply
   int max_restart_;              // Maximum number of time GMRES can restart
   double rel_tolerance_;      
   double abs_tolerance_; 
