@@ -2,34 +2,22 @@
 
 namespace afmpb {
 
-void AFMPB::processPQRFile(std::string &pqr_file) {
- char buffer[200]; 
-  sprintf(buffer, "grep \'ATOM\\|HETATM\' %s | cut -c 30- > %s; wc -l < %s", 
-          pqr_file.c_str(), "processed.txt", "processed.txt"); 
-  std::shared_ptr<FILE> pipe(popen(buffer, "r"), pclose); 
-  if (!pipe) throw std::runtime_error("popen() failed!"); 
-  
-  if (fgets(buffer, sizeof(buffer), pipe.get()) != nullptr) 
-    sscanf(buffer, "%d", &natoms_); 
+void AFMPB::readAtoms(std::vector<Atom> &molecule) {
+  pqr_ >> natoms_; 
 
-  pqr_.open("processed.txt"); 
-}
-
-Atom *AFMPB::readAtoms() {
-  Atom *molecule = new Atom[natoms_]; 
-  int i = 0; 
+  molecule.resize(natoms_); 
   double x, y, z, q, r; 
   double probe_radius = (!mesh_format_ ? probe_radius_ : 0.0); 
+  int i = 0; 
   while (pqr_ >> x >> y >> z >> q >> r) {
-    molecule[i].position = dashmm::Point{x, y, z}; 
+    molecule[i].position = dashmm::Point{x, y, z};
     molecule[i].charge = q; 
     molecule[i].radius = r + probe_radius; 
     i++;
-  } 
-  return molecule;
+  }
 }
 
-void AFMPB::generateMesh(int s, const Atom *molecule, 
+void AFMPB::generateMesh(int s, const std::vector<Atom> &molecule, //const Atom *molecule, 
                          std::vector<Node> &nodes, 
                          std::vector<GNode> &gauss) {
   using namespace dashmm; 

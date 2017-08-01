@@ -46,6 +46,7 @@ struct Configuration {
 }; 
 
 struct Atom {
+  Atom() { }
   dashmm::Point position; 
   double charge;  
   double radius;
@@ -123,9 +124,8 @@ public:
 
 private: 
   void setup(); 
-  void processPQRFile(std::string &pqr_file); 
-  Atom *readAtoms(); 
-  void generateMesh(int s, const Atom *molecule,
+  void readAtoms(std::vector<Atom> &molecule); 
+  void generateMesh(int s, const std::vector<Atom> &molecule, 
                     std::vector<Node> &nodes, 
                     std::vector<GNode> &gauss); 
   void readMesh(std::vector<Node> &nodes); 
