@@ -2,5 +2,8 @@
 /include/*~
 /src/*~
 /example/*.txt
+/example/*.ext
+/example/*.pqr
+/example/*.off
 /example/afmpb
 /contrib/dashmm/*
