@@ -89,6 +89,8 @@ void AFMPB::computeEnergy(bool status) {
   if (!status) 
     return; 
 
+  // Collect the all the nodes to create the Gaussian 
+
   // Setup the Gaussian interpolation points on each element of the mesh
   
 
@@ -141,22 +143,46 @@ void AFMPB::collect() {
   const double unitfactor = 4171.8;
   //auto gauss = gauss_.collect();
   auto nodes = nodes_.collect();
-
-  /*
-  if (gauss) {
-    std::sort(&gauss[0], &gauss[ngauss_],
-              [] (const GNode &a, const GNode &b) -> bool {
-                return (a.index < b.index);
-              });
-  }
-  */
-
   if (nodes) {
     std::sort(&nodes[0], &nodes[nnodes_],
               [] (const Node &a, const Node &b) -> bool {
                 return (a.index < b.index);
               });
   }
+
+
+  // Now generate the Gaussian points 
+  {
+    std::vector<GNode> gauss; 
+    if (!mesh_format_) {
+    } else {
+      generateGaussianPoint(nodes.get(), gauss);      
+    }
+    
+    ngauss_ = gauss.size(); 
+    auto err = gauss_.allocate(ngauss_); 
+    err = gauss_.put(0, ngauss_, gauss.data()); 
+    assert(err == dashmm::kSuccess); 
+    
+    // Compute values on the Gaussian points
+    dashmm::FMM97<Atom, GNode, dashmm::AFMPBRHS> method{}; 
+    std::vector<double> kparam{};
+    
+    err = interp.evaluate(atoms_, gauss_, refine_limit_, &method,
+                          accuracy_, &kparam);
+    assert(err == dashmm::kSuccess);
+  }
+  
+  // Collect results on the Gaussian points 
+  auto gauss = gauss_.collect(); 
+
+  if (gauss) {
+    std::sort(&gauss[0], &gauss[ngauss_],
+              [] (const GNode &a, const GNode &b) -> bool {
+                return (a.index < b.index);
+              });
+  }
+
 
   if (myrank) 
     return; 
@@ -166,7 +192,6 @@ void AFMPB::collect() {
     nodes[i].gmres[1] *= unitfactor;
   }
 
-  /*
   // Compute total free energy
   double nonpolar = surface_tension_ * area_ + pressure_ * volume_;
   double polar = polarEnergy(gauss.get(), ngauss_, nodes.get(), nnodes_);
@@ -182,6 +207,7 @@ void AFMPB::collect() {
        << std::setw(14) << std::right << std::setprecision(5)
        << std::scientific << nonpolar << "\n" << std::flush;
 
+  /*
   // Write potentials
   potential_.precision(8);
   potential_ << std::scientific;

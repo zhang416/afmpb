@@ -120,7 +120,8 @@ private:
   void readAtoms(std::vector<Atom> &molecule); 
   void generateMesh(int s, const std::vector<Atom> &molecule, 
                     std::vector<Node> &nodes); 
-  void generateGaussianPoint(const std::vector<Node> &nodes, 
+  void generateGaussianPoint(//const std::vector<Node> &nodes, 
+                             const Node *nodes, 
                              std::vector<GNode> &gauss); 
 
   //void generateMesh(int s, const std::vector<Atom> &molecule, 

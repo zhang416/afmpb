@@ -612,7 +612,8 @@ void AFMPB::processElementGeometry(std::vector<Node> &nodes) {
   }
 }
 
-void AFMPB::generateGaussianPoint(const std::vector<Node> &nodes, 
+void AFMPB::generateGaussianPoint(// const std::vector<Node> &nodes, 
+                                  const Node *nodes, 
                                   std::vector<GNode> &gauss) {
   using namespace dashmm; 
 
