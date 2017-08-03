@@ -1,4 +1,3 @@
-#include <cstdio>
 #include <iomanip>
 #include <hpx/hpx.h>
 #include "afmpb.h"
@@ -141,7 +140,6 @@ void AFMPB::computeEnergy(bool status) {
 void AFMPB::collect() {
   int myrank = hpx_get_my_rank(); 
   const double unitfactor = 4171.8;
-  //auto gauss = gauss_.collect();
   auto nodes = nodes_.collect();
   if (nodes) {
     std::sort(&nodes[0], &nodes[nnodes_],
@@ -151,8 +149,8 @@ void AFMPB::collect() {
   }
 
 
-  // Now generate the Gaussian points 
-  {
+  if (mesh_format_)  {
+    // Now generate the Gaussian points 
     std::vector<GNode> gauss; 
     if (!mesh_format_) {
     } else {
@@ -171,41 +169,64 @@ void AFMPB::collect() {
     err = interp.evaluate(atoms_, gauss_, refine_limit_, &method,
                           accuracy_, &kparam);
     assert(err == dashmm::kSuccess);
-  }
   
-  // Collect results on the Gaussian points 
-  auto gauss = gauss_.collect(); 
+    // Collect results on the Gaussian points 
+    auto gauss1 = gauss_.collect(); 
+    
+    if (gauss1) {
+      std::sort(&gauss1[0], &gauss1[ngauss_],
+                [] (const GNode &a, const GNode &b) -> bool {
+                  return (a.index < b.index);
+                });
+    }
+    
 
-  if (gauss) {
-    std::sort(&gauss[0], &gauss[ngauss_],
-              [] (const GNode &a, const GNode &b) -> bool {
-                return (a.index < b.index);
-              });
-  }
+    if (myrank) 
+      return; 
+
+    for (int i = 0; i < nnodes_; ++i) {
+      nodes[i].gmres[0] *= unitfactor;
+      nodes[i].gmres[1] *= unitfactor;
+    }
+
+    // Compute total free energy
+    double nonpolar = surface_tension_ * area_ + pressure_ * volume_;
+    double polar = polarEnergy(gauss1.get(), ngauss_, nodes.get(), nnodes_);
+    log_ << "\nResults:\n"
+         << std::setw(50) << std::left << "Total solvation energy:"
+         << std::setw(14) << std::right << std::setprecision(5)
+         << std::scientific << nonpolar + polar << "\n"
+         << std::setw(50) << std::left << "... Polar part:"
+         << std::setw(14) << std::right << std::setprecision(5)
+         << std::scientific << polar << "\n"
+         << std::setw(50) << std::left << "... Nonpolar part:"
+         << std::setw(14) << std::right << std::setprecision(5)
+         << std::scientific << nonpolar << "\n" << std::flush;
+  } else {
+    if (myrank) 
+      return; 
+
+    for (int i = 0; i < nnodes_; ++i) {
+      nodes[i].gmres[0] *= unitfactor;
+      nodes[i].gmres[1] *= unitfactor;
+    }
+
+    // Compute total free energy
+    double nonpolar = surface_tension_ * area_ + pressure_ * volume_;
+    double polar = polarEnergy(nullptr, 0, nodes.get(), nnodes_);
+    log_ << "\nResults:\n"
+         << std::setw(50) << std::left << "Total solvation energy:"
+         << std::setw(14) << std::right << std::setprecision(5)
+         << std::scientific << nonpolar + polar << "\n"
+         << std::setw(50) << std::left << "... Polar part:"
+         << std::setw(14) << std::right << std::setprecision(5)
+         << std::scientific << polar << "\n"
+         << std::setw(50) << std::left << "... Nonpolar part:"
+         << std::setw(14) << std::right << std::setprecision(5)
+         << std::scientific << nonpolar << "\n" << std::flush;
+  }    
 
 
-  if (myrank) 
-    return; 
-
-  for (int i = 0; i < nnodes_; ++i) {
-    nodes[i].gmres[0] *= unitfactor;
-    nodes[i].gmres[1] *= unitfactor;
-  }
-
-  // Compute total free energy
-  double nonpolar = surface_tension_ * area_ + pressure_ * volume_;
-  double polar = polarEnergy(gauss.get(), ngauss_, nodes.get(), nnodes_);
-
-  log_ << "\nResults:\n"
-       << std::setw(50) << std::left << "Total solvation energy:"
-       << std::setw(14) << std::right << std::setprecision(5)
-       << std::scientific << nonpolar + polar << "\n"
-       << std::setw(50) << std::left << "... Polar part:"
-       << std::setw(14) << std::right << std::setprecision(5)
-       << std::scientific << polar << "\n"
-       << std::setw(50) << std::left << "... Nonpolar part:"
-       << std::setw(14) << std::right << std::setprecision(5)
-       << std::scientific << nonpolar << "\n" << std::flush;
 
   /*
   // Write potentials
@@ -233,27 +254,6 @@ double AFMPB::polarEnergy(const GNode *gauss, int ngauss,
                           const Node *nodes, int nnodes) const {
   double b = 0;
 
-#if 1                                                                           
-  FILE *pf1 = fopen("g2.txt", "w");
-  for (int i = 0; i < ngauss; ++i) {
-    fprintf(pf1, "%7.6e %7.6e %7.6e %7.6e %7.6e %7.6e %7.6e %7.6e\n",
-            gauss[i].position.x(),
-            gauss[i].position.y(),                                              
-            gauss[i].position.z(),                                              
-            gauss[i].normal_o.x(),                                                         gauss[i].normal_o.y(),                                                          gauss[i].normal_o.z(),                                              
-            gauss[i].rhs[0],                                                    
-            gauss[i].rhs[1]);                                                   
-  }                                                                              
-  fclose(pf1);                                                                   
-                                                                               
-  pf1 = fopen("n2.txt", "w");                                                    
-  for (int i = 0; i < nnodes; ++i) {                                             
-    fprintf(pf1, "%7.6e %7.6e\n", nodes[i].gmres[0], nodes[i].gmres[1]);         
-  }                                                                              
-  fclose(pf1);                                                                   
-                                                                                 
-#endif          
-
   if (mesh_format_) {
     for (auto && e : elements_) {
       int i1 = e.nodes[0];
@@ -275,6 +275,7 @@ double AFMPB::polarEnergy(const GNode *gauss, int ngauss,
 
     b /= 8 * M_PI;
   } else {
+    /*
     // When using built-in mesh, the number of Gaussian quadrature
     // points is the same as the number of nodes of the surface mesh
     for (int i = 0; i < ngauss; ++i) {
@@ -282,6 +283,19 @@ double AFMPB::polarEnergy(const GNode *gauss, int ngauss,
             gauss[i].rhs[1] * nodes[i].gmres[0]) * nodes[i].area / 2.0;
     }
     b /= 4 * M_PI / 0.985;
+    */
+
+    // When a built-in mesh has been used in previous computation, the
+    // Gaussian points here will be the same, meaning the values are
+    // saved in the rhs field of each node. However, these values were
+    // scaled by 1.0 / dielectric_exterior_ during the GMRES solve
+    // phase and the results need to be adjusted here. 
+    for (int i = 0; i < nnodes; ++i) {
+      b += (nodes[i].rhs[0] * nodes[i].gmres[1] * dielectric_ - 
+            nodes[i].rhs[1] * nodes[i].gmres[0]) * nodes[i].area / 2.0; 
+    }
+
+    b = b * dielectric_exterior_ * 0.985 / 4 / M_PI; 
   }
 
   return b;
