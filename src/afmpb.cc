@@ -1,3 +1,4 @@
+#include <cstdio>
 #include <iomanip>
 #include <hpx/hpx.h>
 #include "afmpb.h"
@@ -205,6 +206,27 @@ void AFMPB::collect() {
 double AFMPB::polarEnergy(const GNode *gauss, int ngauss,
                           const Node *nodes, int nnodes) const {
   double b = 0;
+
+#if 1                                                                           
+  FILE *pf1 = fopen("g2.txt", "w");
+  for (int i = 0; i < ngauss; ++i) {
+    fprintf(pf1, "%7.6e %7.6e %7.6e %7.6e %7.6e %7.6e %7.6e %7.6e\n",
+            gauss[i].position.x(),
+            gauss[i].position.y(),                                              
+            gauss[i].position.z(),                                              
+            gauss[i].normal_o.x(),                                                         gauss[i].normal_o.y(),                                                          gauss[i].normal_o.z(),                                              
+            gauss[i].rhs[0],                                                    
+            gauss[i].rhs[1]);                                                   
+  }                                                                              
+  fclose(pf1);                                                                   
+                                                                               
+  pf1 = fopen("n2.txt", "w");                                                    
+  for (int i = 0; i < nnodes; ++i) {                                             
+    fprintf(pf1, "%7.6e %7.6e\n", nodes[i].gmres[0], nodes[i].gmres[1]);         
+  }                                                                              
+  fclose(pf1);                                                                   
+                                                                                 
+#endif          
 
   if (mesh_format_) {
     for (auto && e : elements_) {
