@@ -103,36 +103,32 @@ public:
       delete [] weight_;
     }
   }
-  
-  bool solve(); 
 
-  void collect(); 
+  bool computePotential(); 
+
+  void computeEnergy(bool status); 
+
   
-  void finalize() {
-    if (hpx_get_my_rank() == 0) {
-      pqr_.close(); 
-      log_.close(); 
-      potential_.close(); 
-      if (mesh_.is_open())
-        mesh_.close();
-    }
-    
-    assert(atoms_.destroy() == dashmm::kSuccess); 
-    assert(gauss_.destroy() == dashmm::kSuccess); 
-    assert(nodes_.destroy() == dashmm::kSuccess); 
-  }
+  bool solve(); //toremove
+
+  void collect(); //toremove
+
+  void finalize(); 
 
 private: 
   void setup(); 
   void readAtoms(std::vector<Atom> &molecule); 
   void generateMesh(int s, const std::vector<Atom> &molecule, 
-                    std::vector<Node> &nodes, 
-                    std::vector<GNode> &gauss); 
+                    std::vector<Node> &nodes); 
+  void generateGaussianPoint(const std::vector<Node> &nodes, 
+                             std::vector<GNode> &gauss); 
+
+  //void generateMesh(int s, const std::vector<Atom> &molecule, 
+  //                    std::vector<Node> &nodes, 
+  //std::vector<GNode> &gauss); 
   void readMesh(std::vector<Node> &nodes); 
   void removeIsolatedNodes(std::vector<Node> &nodes); 
   void processElementGeometry(std::vector<Node> &nodes); 
-  void generateGaussianPoint(const std::vector<Node> &nodes, 
-                             std::vector<GNode> &gauss); 
   double polarEnergy(const GNode *gauss, int ngauss, 
                      const Node *nodes, int nnodes) const; 
   double generalizedInnerProduct(int x, int y); 

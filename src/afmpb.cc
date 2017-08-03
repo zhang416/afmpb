@@ -10,7 +10,7 @@ dashmm::Evaluator<Atom, GNode, dashmm::AFMPBRHS, dashmm::FMM97> interp{};
 void AFMPB::setup() {
   std::vector<Atom> molecule; 
   std::vector<Node> nodes;
-  std::vector<GNode> gauss;
+  //std::vector<GNode> gauss;
 
   if (hpx_get_my_rank() == 0) {
     // Input file is read from rank 0 only
@@ -18,12 +18,13 @@ void AFMPB::setup() {
 
     if (!mesh_format_) {
       for (int i = 0; i < natoms_; ++i)
-        generateMesh(i, molecule, nodes, gauss);
+        //generateMesh(i, molecule, nodes, gauss);
+        generateMesh(i, molecule, nodes); 
     } else {
       readMesh(nodes);
       removeIsolatedNodes(nodes);
       processElementGeometry(nodes);
-      generateGaussianPoint(nodes, gauss);
+      //generateGaussianPoint(nodes, gauss);
     }
   
     log_
@@ -55,7 +56,7 @@ void AFMPB::setup() {
 
   natoms_ = molecule.size(); 
   nnodes_ = nodes.size();
-  ngauss_ = gauss.size();
+  //ngauss_ = gauss.size();
 
   auto err = atoms_.allocate(natoms_); 
   assert(err == dashmm::kSuccess); 
@@ -67,6 +68,7 @@ void AFMPB::setup() {
   err = nodes_.put(0, nnodes_, nodes.data());
   assert(err == dashmm::kSuccess);
 
+  /*
   err = gauss_.allocate(ngauss_);
   assert(err == dashmm::kSuccess);
   err = gauss_.put(0, ngauss_, gauss.data());
@@ -78,11 +80,19 @@ void AFMPB::setup() {
   err = interp.evaluate(atoms_, gauss_, refine_limit_, &method,
                         accuracy_, &kparam);
   assert(err == dashmm::kSuccess);
+  */
 }
 
-void AFMPB::collect() {
-  int myrank = hpx_get_my_rank(); 
-  const double unitfactor = 4171.8;
+void AFMPB::computeEnergy(bool status) {
+  // Compute the energy on if the GMRES has converged
+  if (!status) 
+    return; 
+
+  // Setup the Gaussian interpolation points on each element of the mesh
+  
+
+
+  const double unitfactor = 4171.8; 
   auto gauss = gauss_.collect();
   auto nodes = nodes_.collect();
 
@@ -100,6 +110,53 @@ void AFMPB::collect() {
               });
   }
 
+  if (hpx_get_my_rank())
+    return; 
+
+  for (int i = 0; i < nnodes_; ++i) {
+    nodes[i].gmres[0] *= unitfactor;
+    nodes[i].gmres[1] *= unitfactor;
+  }
+
+  // Compute total free energy
+  double nonpolar = surface_tension_ * area_ + pressure_ * volume_;
+  double polar = polarEnergy(gauss.get(), ngauss_, nodes.get(), nnodes_);
+
+  log_ << "\nResults:\n"
+       << std::setw(50) << std::left << "Total solvation energy:"
+       << std::setw(14) << std::right << std::setprecision(5)
+       << std::scientific << nonpolar + polar << "\n"
+       << std::setw(50) << std::left << "... Polar part:"
+       << std::setw(14) << std::right << std::setprecision(5)
+       << std::scientific << polar << "\n"
+       << std::setw(50) << std::left << "... Nonpolar part:"
+       << std::setw(14) << std::right << std::setprecision(5)
+       << std::scientific << nonpolar << "\n" << std::flush;   
+}
+
+
+void AFMPB::collect() {
+  int myrank = hpx_get_my_rank(); 
+  const double unitfactor = 4171.8;
+  //auto gauss = gauss_.collect();
+  auto nodes = nodes_.collect();
+
+  /*
+  if (gauss) {
+    std::sort(&gauss[0], &gauss[ngauss_],
+              [] (const GNode &a, const GNode &b) -> bool {
+                return (a.index < b.index);
+              });
+  }
+  */
+
+  if (nodes) {
+    std::sort(&nodes[0], &nodes[nnodes_],
+              [] (const Node &a, const Node &b) -> bool {
+                return (a.index < b.index);
+              });
+  }
+
   if (myrank) 
     return; 
 
@@ -108,6 +165,7 @@ void AFMPB::collect() {
     nodes[i].gmres[1] *= unitfactor;
   }
 
+  /*
   // Compute total free energy
   double nonpolar = surface_tension_ * area_ + pressure_ * volume_;
   double polar = polarEnergy(gauss.get(), ngauss_, nodes.get(), nnodes_);
@@ -141,6 +199,7 @@ void AFMPB::collect() {
                  << std::setw(8) << e.nodes[2] << "\n";
     }
   }
+  */
 }
 
 double AFMPB::polarEnergy(const GNode *gauss, int ngauss,
@@ -179,5 +238,21 @@ double AFMPB::polarEnergy(const GNode *gauss, int ngauss,
 
   return b;
 }
+
+void AFMPB::finalize() {
+  if (hpx_get_my_rank() == 0) {
+    pqr_.close(); 
+    log_.close(); 
+    if (potential_.is_open())
+      potential_.close(); 
+    if (mesh_.is_open())
+      mesh_.close();
+  }
+  
+  assert(atoms_.destroy() == dashmm::kSuccess); 
+  //assert(gauss_.destroy() == dashmm::kSuccess); 
+  assert(nodes_.destroy() == dashmm::kSuccess); 
+}
+
 
 } // namespace afmpb
