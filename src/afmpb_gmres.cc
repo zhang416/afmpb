@@ -13,8 +13,8 @@ namespace afmpb {
 
 dashmm::Evaluator<Atom, Node, dashmm::AFMPBRHS, dashmm::FMM97> rhs{};
 dashmm::Evaluator<Node, Node, dashmm::AFMPBLHS, dashmm::FMM97NL3> lhs{}; 
-dashmm::ArrayMapAction<Node, double> rhs_action{set_rhs}; 
-dashmm::ArrayMapAction<Node, double> r0_action{set_r0}; 
+dashmm::ArrayForEachAction<Node, double> rhs_action{set_rhs}; 
+dashmm::ArrayForEachAction<Node, double> r0_action{set_r0}; 
 
 using namespace std::chrono; 
 high_resolution_clock::time_point t1, t2; 
@@ -48,7 +48,7 @@ bool AFMPB::solve() {
   assert(err == dashmm::kSuccess); 
 
   // Scale b, let x0 = b, and copy x0 into q0 slot of Krylov basis
-  nodes_.map(rhs_action, &dielectric_exterior_); 
+  nodes_.forEach(rhs_action, &dielectric_exterior_); 
 
   // Compute 2-norm of the rhs, setup tolerance for GMRES 
   double rhs_norm2 = generalizedInnerProduct(-1, -1); 
@@ -97,7 +97,7 @@ bool AFMPB::solve() {
     assert(err == dashmm::kSuccess); 
 
     // Compute r0 = b - Ax0
-    nodes_.map(r0_action, (double *)nullptr); 
+    nodes_.forEach(r0_action, (double *)nullptr); 
 
     // Compute 2-norm of r0 and normalize r0 to q0 
     residual_[0] = generalizedInnerProduct(0, 0); 
