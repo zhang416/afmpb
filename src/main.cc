@@ -8,11 +8,10 @@ int main(int argc, char **argv) {
 
     auto status = system.computePotential(); 
 
-   
-    
-    //if (system.solve())  
-    if (status)
-      system.collect(); 
+    system.computeEnergy(status); 
+
+    //if (status)
+    //system.collect(); 
 
 
     system.finalize(); 

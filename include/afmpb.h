@@ -28,7 +28,7 @@ struct Configuration {
   std::string pqr_file; 
   std::string mesh_file; 
   std::string log_file{"output.txt"}; 
-  std::string potential_file{"potential.txt"}; 
+  std::string potential_file; 
   int mesh_format = 0; 
   double mesh_density = 40.0; 
   double probe_radius = 0.0; 
@@ -107,12 +107,13 @@ public:
   // Compute potential and its normal direction on the molecular surface
   bool computePotential(); 
 
+  // Compute solvation energy of the system 
   void computeEnergy(bool status); 
 
   
   //bool solve(); //toremove
 
-  void collect(); //toremove
+  //void collect(); //toremove
 
   void finalize(); 
 
