@@ -136,12 +136,24 @@ private:
   // Generate Gaussian interpolation points for energy computation 
   std::vector<GNode> generateGaussianPoint(const Node *nodes); 
 
+  // Perform various dot product 
   double generalizedInnerProduct(int x, int y); 
+
+  // Modified Gram-Schmidt 
   void modifiedGramSchmidtReOrth(); 
+
+  // Givens rotation 
   void applyGivensRotation(); 
+
   void generateGivensRotation(double &x, double &y); 
+
+  // Compute the residual of the current iteration
   double updateResidualNorm(); 
+
+  // Compute the current approximation solution 
   int computeApproxSolution(bool converged); 
+
+  // Wrapper function to compute Q * y in GMRES
   void linearCombination(int k); 
 
 private: 

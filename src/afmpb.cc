@@ -75,6 +75,10 @@ void AFMPB::computeEnergy(bool status) {
                 return (a.index < b.index);
               });
   }
+  
+  // Free up memory for the next computation
+  assert(nodes_.destroy() == dashmm::kSuccess); 
+
 
 
   if (mesh_format_)  {
@@ -194,7 +198,9 @@ void AFMPB::finalize(bool status) {
   }
   
   assert(atoms_.destroy() == dashmm::kSuccess); 
-  assert(nodes_.destroy() == dashmm::kSuccess); 
+
+  if (!status) 
+    assert(nodes_.destroy() == dashmm::kSuccess); 
 
   if (status) 
     assert(gauss_.destroy() == dashmm::kSuccess); 
