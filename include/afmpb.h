@@ -104,12 +104,13 @@ public:
     }
   }
 
+  // Compute potential and its normal direction on the molecular surface
   bool computePotential(); 
 
   void computeEnergy(bool status); 
 
   
-  bool solve(); //toremove
+  //bool solve(); //toremove
 
   void collect(); //toremove
 
@@ -121,21 +122,23 @@ private:
   // Read atoms from parsed pqr file 
   Atom *readAtoms(); 
 
+  // Generate mesh if no input mesh is supplied
   std::vector<Node> generateMesh(const Atom *molecule); 
 
-  //void generateMesh(int s, const Atom *molecule, 
-  //                std::vector<Node> &nodes); 
+  // Read mesh file and remove isolated nodes 
+  std::vector<Node> readMesh(); 
+
+  // Compute normal direction of each element if that is not given and compute
+  // the node-patch 
+  void processElementGeometry(std::vector<Node> &nodes); 
+  
+
+
 
   void generateGaussianPoint(//const std::vector<Node> &nodes, 
                              const Node *nodes, 
                              std::vector<GNode> &gauss); 
 
-  //void generateMesh(int s, const std::vector<Atom> &molecule, 
-  //                    std::vector<Node> &nodes, 
-  //std::vector<GNode> &gauss); 
-  void readMesh(std::vector<Node> &nodes); 
-  void removeIsolatedNodes(std::vector<Node> &nodes); 
-  void processElementGeometry(std::vector<Node> &nodes); 
   double polarEnergy(const GNode *gauss, int ngauss, 
                      const Node *nodes, int nnodes) const; 
   double generalizedInnerProduct(int x, int y); 

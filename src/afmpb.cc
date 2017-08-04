@@ -15,16 +15,11 @@ void AFMPB::setup() {
   if (hpx_get_my_rank() == 0) {
     molecule = readAtoms(); 
 
-    if (!mesh_format_) {
-      nodes = generateMesh(molecule); 
-      //for (int i = 0; i < natoms_; ++i)
-        //generateMesh(i, molecule, nodes, gauss);
-        //generateMesh(i, molecule, nodes); 
-    } else {
-      readMesh(nodes);
-      removeIsolatedNodes(nodes);
+    if (mesh_format_) {
+      nodes = readMesh(); 
       processElementGeometry(nodes);
-      //generateGaussianPoint(nodes, gauss);
+    } else {
+      nodes = generateMesh(molecule); 
     }
   
     log_

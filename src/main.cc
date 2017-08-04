@@ -6,14 +6,12 @@ int main(int argc, char **argv) {
   if (parameter) {
     afmpb::AFMPB system(std::move(parameter)); 
 
-    //auto status = system.computePotential(); 
+    auto status = system.computePotential(); 
 
-    //system.computeEnergy(status); 
-
+   
     
-
-    
-    if (system.solve())  
+    //if (system.solve())  
+    if (status)
       system.collect(); 
 
 

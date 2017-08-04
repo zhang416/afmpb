@@ -20,10 +20,6 @@ using namespace std::chrono;
 high_resolution_clock::time_point t1, t2; 
 
 bool AFMPB::computePotential() {
-  return true;
-}
-
-bool AFMPB::solve() {
   int myrank = hpx_get_my_rank(); 
 
   bool terminate = false, converged = false, compute = false; 
