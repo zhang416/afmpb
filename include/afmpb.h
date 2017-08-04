@@ -129,15 +129,13 @@ private:
   // the node-patch 
   void processElementGeometry(std::vector<Node> &nodes); 
   
-
-
-
-  void generateGaussianPoint(//const std::vector<Node> &nodes, 
-                             const Node *nodes, 
-                             std::vector<GNode> &gauss); 
-
+  // Compute the polar energy of the system 
   double polarEnergy(const GNode *gauss, int ngauss, 
                      const Node *nodes, int nnodes) const; 
+  
+  // Generate Gaussian interpolation points for energy computation 
+  std::vector<GNode> generateGaussianPoint(const Node *nodes); 
+
   double generalizedInnerProduct(int x, int y); 
   void modifiedGramSchmidtReOrth(); 
   void applyGivensRotation(); 

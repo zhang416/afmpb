@@ -79,11 +79,13 @@ void AFMPB::computeEnergy(bool status) {
 
   if (mesh_format_)  {
     // Now generate the Gaussian points 
-    std::vector<GNode> gauss; 
-    if (!mesh_format_) {
-    } else {
-      generateGaussianPoint(nodes.get(), gauss);      
-    }
+    auto gauss = generateGaussianPoint(nodes.get()); 
+    
+    //std::vector<GNode> gauss; 
+    //if (!mesh_format_) {
+    //} else {
+    //generateGaussianPoint(nodes.get(), gauss);      
+    //}
     
     ngauss_ = gauss.size(); 
     auto err = gauss_.allocate(ngauss_); 
@@ -198,9 +200,6 @@ void AFMPB::finalize(bool status) {
     assert(gauss_.destroy() == dashmm::kSuccess); 
 }
 
-
-
-
 double AFMPB::polarEnergy(const GNode *gauss, int ngauss,
                           const Node *nodes, int nnodes) const {
   double b = 0;
@@ -226,16 +225,6 @@ double AFMPB::polarEnergy(const GNode *gauss, int ngauss,
 
     b /= 8 * M_PI;
   } else {
-    /*
-    // When using built-in mesh, the number of Gaussian quadrature
-    // points is the same as the number of nodes of the surface mesh
-    for (int i = 0; i < ngauss; ++i) {
-      b += (gauss[i].rhs[0] * nodes[i].gmres[1] * dielectric_ -
-            gauss[i].rhs[1] * nodes[i].gmres[0]) * nodes[i].area / 2.0;
-    }
-    b /= 4 * M_PI / 0.985;
-    */
-
     // When a built-in mesh has been used in previous computation, the
     // Gaussian points here will be the same, meaning the values are
     // saved in the rhs field of each node. However, these values were
