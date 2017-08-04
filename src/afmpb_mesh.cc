@@ -180,8 +180,10 @@ std::vector<Node> AFMPB::readMesh() {
   std::vector<Node> nodes; 
 
   using namespace dashmm; 
-  int nnodes, nelements; 
-  mesh_ >> nnodes >> nelements; 
+  char type[100]; 
+  mesh_ >> type; 
+  int nnodes, nelements, unused; 
+  mesh_ >> nnodes >> nelements >> unused; 
 
   nodes.resize(nnodes); 
   elements_.resize(nelements); 
