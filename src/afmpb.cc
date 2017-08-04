@@ -65,9 +65,6 @@ void AFMPB::computeEnergy(bool status) {
   if (!status) 
     return; 
 
-
-  int myrank = hpx_get_my_rank(); 
-  const double unitfactor = 4171.8;
   auto nodes = nodes_.collect();
   if (nodes) {
     std::sort(&nodes[0], &nodes[nnodes_],
@@ -78,90 +75,66 @@ void AFMPB::computeEnergy(bool status) {
   
   // Free up memory for the next computation
   assert(nodes_.destroy() == dashmm::kSuccess); 
+  std::unique_ptr<GNode []> gauss; 
 
-
-
-  if (mesh_format_)  {
-    // Now generate the Gaussian points 
-    auto gauss = generateGaussianPoint(nodes.get()); 
-    
-    //std::vector<GNode> gauss; 
-    //if (!mesh_format_) {
-    //} else {
-    //generateGaussianPoint(nodes.get(), gauss);      
-    //}
-    
-    ngauss_ = gauss.size(); 
+  if (mesh_format_) {
+    // Generate the Gaussian points on each mesh element
+    auto pts = generateGaussianPoint(nodes.get()); 
+    ngauss_ = pts.size(); 
     auto err = gauss_.allocate(ngauss_); 
-    err = gauss_.put(0, ngauss_, gauss.data()); 
+    err = gauss_.put(0, ngauss_, pts.data()); 
     assert(err == dashmm::kSuccess); 
-    
-    // Compute values on the Gaussian points
+
+    // Compute the values on the Gaussian points 
     dashmm::FMM97<Atom, GNode, dashmm::AFMPBRHS> method{}; 
     std::vector<double> kparam{};
     
     err = interp.evaluate(atoms_, gauss_, refine_limit_, &method,
                           accuracy_, &kparam);
     assert(err == dashmm::kSuccess);
-  
-    // Collect results on the Gaussian points 
-    auto gauss1 = gauss_.collect(); 
-    
-    if (gauss1) {
-      std::sort(&gauss1[0], &gauss1[ngauss_],
+
+    // Collect results 
+    gauss = gauss_.collect(); 
+    if (gauss) {
+      std::sort(&gauss[0], &gauss[ngauss_],
                 [] (const GNode &a, const GNode &b) -> bool {
                   return (a.index < b.index);
                 });
     }
-    
+  } 
+  
 
-    if (myrank) 
-      return; 
+  // Rank 0 computes and reports the result 
+  int myrank = hpx_get_my_rank(); 
+  if (myrank) 
+    return; 
 
-    for (int i = 0; i < nnodes_; ++i) {
-      nodes[i].gmres[0] *= unitfactor;
-      nodes[i].gmres[1] *= unitfactor;
-    }
-
-    // Compute total free energy
-    double nonpolar = surface_tension_ * area_ + pressure_ * volume_;
-    double polar = polarEnergy(gauss1.get(), ngauss_, nodes.get(), nnodes_);
-    log_ << "\nResults:\n"
-         << std::setw(50) << std::left << "Total solvation energy:"
-         << std::setw(14) << std::right << std::setprecision(5)
-         << std::scientific << nonpolar + polar << "\n"
-         << std::setw(50) << std::left << "... Polar part:"
-         << std::setw(14) << std::right << std::setprecision(5)
-         << std::scientific << polar << "\n"
-         << std::setw(50) << std::left << "... Nonpolar part:"
-         << std::setw(14) << std::right << std::setprecision(5)
-         << std::scientific << nonpolar << "\n" << std::flush;
+  const double unitfactor = 4171.8;
+  for (int i = 0; i < nnodes_; ++i) {
+    nodes[i].gmres[0] *= unitfactor;
+    nodes[i].gmres[1] *= unitfactor;
+  }
+  
+  double nonpolar = surface_tension_ * area_ + pressure_ * volume_;
+  double polar = 0; 
+  if (mesh_format_) {
+    polar = polarEnergy(gauss.get(), ngauss_, nodes.get(), nnodes_);
   } else {
-    if (myrank) 
-      return; 
+    polar = polarEnergy(nullptr, 0, nodes.get(), nnodes_);
+  }
 
-    for (int i = 0; i < nnodes_; ++i) {
-      nodes[i].gmres[0] *= unitfactor;
-      nodes[i].gmres[1] *= unitfactor;
-    }
-
-    // Compute total free energy
-    double nonpolar = surface_tension_ * area_ + pressure_ * volume_;
-    double polar = polarEnergy(nullptr, 0, nodes.get(), nnodes_);
-    log_ << "\nResults:\n"
-         << std::setw(50) << std::left << "Total solvation energy:"
-         << std::setw(14) << std::right << std::setprecision(5)
-         << std::scientific << nonpolar + polar << "\n"
-         << std::setw(50) << std::left << "... Polar part:"
-         << std::setw(14) << std::right << std::setprecision(5)
-         << std::scientific << polar << "\n"
-         << std::setw(50) << std::left << "... Nonpolar part:"
-         << std::setw(14) << std::right << std::setprecision(5)
-         << std::scientific << nonpolar << "\n" << std::flush;
-  }    
-
-
-  // Write potentials if the stream is open 
+  log_ << "\nResults:\n"
+       << std::setw(50) << std::left << "Total solvation energy:"
+       << std::setw(14) << std::right << std::setprecision(5)
+       << std::scientific << nonpolar + polar << "\n"
+       << std::setw(50) << std::left << "... Polar part:"
+       << std::setw(14) << std::right << std::setprecision(5)
+       << std::scientific << polar << "\n"
+       << std::setw(50) << std::left << "... Nonpolar part:"
+       << std::setw(14) << std::right << std::setprecision(5)
+       << std::scientific << nonpolar << "\n" << std::flush;
+  
+  // Write potential before nodes goes out of scope if the stream is open
   if (potential_.is_open()) {
     potential_.precision(8);
     potential_ << std::scientific;
