@@ -117,14 +117,15 @@ public:
 
 private: 
   void setup(); 
-  //void readAtoms(std::vector<Atom> &molecule); 
+
+  // Read atoms from parsed pqr file 
   Atom *readAtoms(); 
-  void generateMesh(int s, const Atom *molecule, 
-                    std::vector<Node> &nodes); 
 
+  std::vector<Node> generateMesh(const Atom *molecule); 
 
-  //void generateMesh(int s, const std::vector<Atom> &molecule, 
-  //                  std::vector<Node> &nodes); 
+  //void generateMesh(int s, const Atom *molecule, 
+  //                std::vector<Node> &nodes); 
+
   void generateGaussianPoint(//const std::vector<Node> &nodes, 
                              const Node *nodes, 
                              std::vector<GNode> &gauss); 

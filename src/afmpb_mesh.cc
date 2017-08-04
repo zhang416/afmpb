@@ -19,26 +19,171 @@ Atom *AFMPB::readAtoms() {
   return molecule; 
 }
 
-/*
-void AFMPB::readAtoms(std::vector<Atom> &molecule) {
-  pqr_ >> natoms_; 
+std::vector<Node> AFMPB::generateMesh(const Atom *molecule) {
+  /*
 
-  molecule.resize(natoms_); 
-  double x, y, z, q, r; 
-  double probe_radius = (!mesh_format_ ? probe_radius_ : 0.0); 
-  int i = 0; 
-  while (pqr_ >> x >> y >> z >> q >> r) {
-    molecule[i].position = dashmm::Point{x, y, z};
-    molecule[i].charge = q; 
-    molecule[i].radius = r + probe_radius; 
-    i++;
+void AFMPB::generateMesh(int s, //const std::vector<Atom> &molecule, 
+                         const Atom *molecule, 
+                         std::vector<Node> &nodes) {
+  */
+  std::vector<Node> nodes; 
+
+  using namespace dashmm; 
+  const int max_polar_intervals = 600; 
+  const int min_polar_intervals = 5; 
+  const double scale = 1.0 / 0.985; 
+
+
+  for (int s = 0; s < natoms_; ++s) {
+    const Atom &S = molecule[s]; 
+    const Point &center = S.position; 
+    double radius = S.radius; 
+    std::vector<int> intersected; 
+    
+    // Find the list of intersecting atoms
+    for (int t = 0; t < natoms_; ++t) {
+      if (s == t) 
+        continue; 
+      
+      Point dist = point_sub(center, molecule[t].position); 
+      if (dist.norm() < radius + molecule[t].radius)
+        intersected.push_back(t);
+    }
+    
+    // Number of intervals used to divide polar angle theta
+    int n = radius * sqrt(2.0 * M_PI * mesh_density_); 
+    n = std::min(max_polar_intervals, std::max(n, min_polar_intervals)); 
+    
+    // Number of intervals used to divide azimuthal angle beta
+    int m = 2 * n; 
+    
+    double dbeta = 2.0 * M_PI / m; 
+    double area = 4.0 * radius * radius * M_PI / n / m * scale; 
+    
+    std::unique_ptr<double []> theta{new double[n + 1]}; 
+    std::unique_ptr<double []> thetaBar{new double[n]}; 
+    std::unique_ptr<double []> beta{new double[m]}; 
+    
+    theta[0] = -M_PI / 2; 
+    for (int i = 1; i <= n; ++i) 
+      theta[i] = asin(-1 + 2.0 * i / n); 
+    
+    thetaBar[0] = (theta[0] + 2 * theta[1]) / 3; 
+    for (int i = 1; i <= n - 2; ++i) 
+      thetaBar[i] = (theta[i] + theta[i + 1]) / 2; 
+    thetaBar[n - 1] = (2 * theta[n - 1] + theta[n]) / 3; 
+    
+    for (int i = 0; i < m; ++i) 
+      beta[i] = i * dbeta; 
+    
+    // Discretize the surface of S 
+    for (int i = 0; i < n; ++i) {
+      for (int j = 0; j < m; ++j) {
+        // (ox, oy, oz) is the outer normal direction
+        double ox = cos(thetaBar[i]) * cos(beta[j]); 
+        double oy = cos(thetaBar[i]) * sin(beta[j]); 
+        double oz = sin(thetaBar[i]); 
+        
+        Point p{center.x() + radius * ox, center.y() + radius * oy, 
+            center.z() + radius * oz}; 
+        
+        // Check if p is buried inside any of the intersecting atoms 
+        bool buried = false; 
+        for (auto t : intersected) {
+          Point dist = point_sub(p, molecule[t].position); 
+          if (dist.norm() < molecule[t].radius) {
+            buried = true; 
+            break;
+          }
+        }
+        
+        if (buried) 
+          continue; 
+        
+        area_ += area / scale; // total mesh surface area
+        
+        Node node; 
+        node.position = p; 
+        node.normal_o = Point{ox, oy, oz}; 
+        node.area = area; 
+        
+        double p1 = area / 4 * (sin(theta[i + 1]) - sin(thetaBar[i])) * n; 
+        double p2 = p1; 
+        double p3 = area / 4 * (sin(thetaBar[i]) - sin(theta[i])) * n; 
+        double p4 = p3; 
+        
+        double c1 = cos((thetaBar[i] + theta[i + 1]) / 2); 
+        double s1 = sin((thetaBar[i] + theta[i + 1]) / 2); 
+        double c2 = cos((thetaBar[i] + theta[i]) / 2); 
+        double s2 = sin((thetaBar[i] + theta[i]) / 2); 
+        double c3 = cos(beta[j] - M_PI / m); 
+        double s3 = sin(beta[j] - M_PI / m); 
+        double c4 = cos(beta[j] + M_PI / m); 
+        double s4 = sin(beta[j] + M_PI / m); 
+        
+        double v11 = c1 * c3; 
+        double v21 = c1 * s3; 
+        double v31 = s1; 
+        
+        double v12 = c1 * c4; 
+        double v22 = c1 * s4;
+        double v32 = s1; 
+        
+        double v13 = c2 * c3; 
+        double v23 = c2 * s3; 
+        double v33 = s2; 
+        
+        double v14 = c2 * c4; 
+        double v24 = c2 * s4; 
+        double v34 = s2; 
+        
+        // (ix, iy, iz) is the inner normal 
+        double ix = p1 * v11 + p2 * v12 + p3 * v13 + p4 * v14; 
+        double iy = p1 * v21 + p2 * v22 + p3 * v23 + p4 * v24; 
+        double iz = p1 * v31 + p2 * v32 + p3 * v33 + p4 * v34; 
+        double norm = sqrt(ix * ix + iy * iy + iz * iz); 
+        
+        node.projected = norm; 
+        node.normal_i = Point{ix / norm, iy / norm, iz / norm}; 
+        
+        volume_ += point_dot(node.normal_i, node.position) / 3 * area / scale; 
+        
+        // Patch 1
+        double p1x = center.x() + radius * v11; 
+        double p1y = center.y() + radius * v21;
+        double p1z = center.z() + radius * v31; 
+        node.patch.emplace_back(Point{p1x, p1y, p1z}, Point{v11, v21, v31}, p1);
+        
+        // Patch 2
+        double p2x = center.x() + radius * v12; 
+        double p2y = center.y() + radius * v22;
+        double p2z = center.z() + radius * v32; 
+        node.patch.emplace_back(Point{p2x, p2y, p2z}, Point{v12, v22, v32}, p1); 
+        
+        // Patch 3
+        double p3x = center.x() + radius * v13;
+        double p3y = center.y() + radius * v23;
+        double p3z = center.z() + radius * v33;
+        node.patch.emplace_back(Point{p3x, p3y, p3z}, Point{v13, v23, v33}, p3); 
+        
+        // Patch 4 
+        double p4x = center.x() + radius * v14;
+        double p4y = center.y() + radius * v24;
+        double p4z = center.z() + radius * v34;
+        node.patch.emplace_back(Point{p4x, p4y, p4z}, Point{v14, v24, v34}, p3); 
+        
+        node.index = nodes.size(); 
+        node.gmres.resize((restart_  + 1) * 2); 
+        nodes.push_back(node); 
+      }
+    }
   }
+
+  return nodes; 
 }
-*/
 
 
-
-
+/*
 void AFMPB::generateMesh(int s, //const std::vector<Atom> &molecule, 
                          const Atom *molecule, 
                          std::vector<Node> &nodes) {
@@ -190,7 +335,7 @@ void AFMPB::generateMesh(int s, //const std::vector<Atom> &molecule,
     }
   }
 }
-
+*/
 
 
 void AFMPB::readMesh(std::vector<Node> &nodes) {

@@ -8,20 +8,18 @@ namespace afmpb {
 dashmm::Evaluator<Atom, GNode, dashmm::AFMPBRHS, dashmm::FMM97> interp{};
 
 void AFMPB::setup() {
-  //std::vector<Atom> molecule; 
   Atom *molecule{nullptr}; 
   std::vector<Node> nodes;
-  //std::vector<GNode> gauss;
 
+  // Handle input streams on rank 0
   if (hpx_get_my_rank() == 0) {
-    // Input file is read from rank 0 only
-    //readAtoms(molecule); 
     molecule = readAtoms(); 
 
     if (!mesh_format_) {
-      for (int i = 0; i < natoms_; ++i)
+      nodes = generateMesh(molecule); 
+      //for (int i = 0; i < natoms_; ++i)
         //generateMesh(i, molecule, nodes, gauss);
-        generateMesh(i, molecule, nodes); 
+        //generateMesh(i, molecule, nodes); 
     } else {
       readMesh(nodes);
       removeIsolatedNodes(nodes);
@@ -56,34 +54,15 @@ void AFMPB::setup() {
          << std::scientific << kap_ << "\n" << std::flush;
   } 
 
-  //natoms_ = molecule.size(); 
-  nnodes_ = nodes.size();
-  //ngauss_ = gauss.size();
 
   auto err = atoms_.allocate(natoms_, molecule); 
-  //  auto err = atoms_.allocate(natoms_); 
-  //assert(err == dashmm::kSuccess); 
-  //err = atoms_.put(0, natoms_, molecule.data()); 
-  //assert(err == dashmm::kSuccess); 
+  assert(err == dashmm::kSuccess); 
 
+  nnodes_ = nodes.size();
   err = nodes_.allocate(nnodes_);
   assert(err == dashmm::kSuccess);
   err = nodes_.put(0, nnodes_, nodes.data());
   assert(err == dashmm::kSuccess);
-
-  /*
-  err = gauss_.allocate(ngauss_);
-  assert(err == dashmm::kSuccess);
-  err = gauss_.put(0, ngauss_, gauss.data());
-  assert(err == dashmm::kSuccess);
-
-  dashmm::FMM97<Atom, GNode, dashmm::AFMPBRHS> method{};
-  std::vector<double> kparam{};
-
-  err = interp.evaluate(atoms_, gauss_, refine_limit_, &method,
-                        accuracy_, &kparam);
-  assert(err == dashmm::kSuccess);
-  */
 }
 
 void AFMPB::computeEnergy(bool status) {
