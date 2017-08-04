@@ -10,11 +10,7 @@ int main(int argc, char **argv) {
 
     system.computeEnergy(status); 
 
-    //if (status)
-    //system.collect(); 
-
-
-    system.finalize(); 
+    system.finalize(status); 
   } 
 
   auto err = afmpb::finalize(); 

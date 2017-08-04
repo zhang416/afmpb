@@ -110,12 +110,8 @@ public:
   // Compute solvation energy of the system 
   void computeEnergy(bool status); 
 
-  
-  //bool solve(); //toremove
-
-  //void collect(); //toremove
-
-  void finalize(); 
+  // Finalize AFMPB solver
+  void finalize(bool status); 
 
 private: 
   void setup(); 
