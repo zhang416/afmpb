@@ -142,10 +142,14 @@ AFMPB::AFMPB(std::unique_ptr<Configuration> p) {
   // Process the input stream on rank 0 only 
   if (hpx_get_my_rank() == 0) {
     pqr_.open(p->pqr_file); 
-    log_.open(p->log_file); 
-    potential_.open(p->potential_file); 
+
     if (p->mesh_format) 
       mesh_.open(p->mesh_file); 
+
+    log_.open(p->log_file); 
+
+    if (p->potential_file.empty() == false) 
+      potential_.open(p->potential_file); 
   }
 
   mesh_format_ = p->mesh_format; 
@@ -198,12 +202,17 @@ AFMPB::AFMPB(std::unique_ptr<Configuration> p) {
   residual_.resize(restart_ + 2); 
 
   hpx_run(&allocate_reducer_, &reducer_); 
-
   t_dag_ = 0.0; 
   t_exec_ = 0.0; 
   t_gmres_ = 0.0; 
   t_inner_ = 0.0; 
   n_inner_ = 0; 
+
+  natoms_ = 0; 
+  nnodes_ = 0; 
+  ngauss_ = 0; 
+  area_ = 0.0; 
+  volume_ = 0.0; 
 
   setup(); 
 }

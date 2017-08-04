@@ -8,13 +8,15 @@ namespace afmpb {
 dashmm::Evaluator<Atom, GNode, dashmm::AFMPBRHS, dashmm::FMM97> interp{};
 
 void AFMPB::setup() {
-  std::vector<Atom> molecule; 
+  //std::vector<Atom> molecule; 
+  Atom *molecule{nullptr}; 
   std::vector<Node> nodes;
   //std::vector<GNode> gauss;
 
   if (hpx_get_my_rank() == 0) {
     // Input file is read from rank 0 only
-    readAtoms(molecule); 
+    //readAtoms(molecule); 
+    molecule = readAtoms(); 
 
     if (!mesh_format_) {
       for (int i = 0; i < natoms_; ++i)
@@ -54,14 +56,15 @@ void AFMPB::setup() {
          << std::scientific << kap_ << "\n" << std::flush;
   } 
 
-  natoms_ = molecule.size(); 
+  //natoms_ = molecule.size(); 
   nnodes_ = nodes.size();
   //ngauss_ = gauss.size();
 
-  auto err = atoms_.allocate(natoms_); 
-  assert(err == dashmm::kSuccess); 
-  err = atoms_.put(0, natoms_, molecule.data()); 
-  assert(err == dashmm::kSuccess); 
+  auto err = atoms_.allocate(natoms_, molecule); 
+  //  auto err = atoms_.allocate(natoms_); 
+  //assert(err == dashmm::kSuccess); 
+  //err = atoms_.put(0, natoms_, molecule.data()); 
+  //assert(err == dashmm::kSuccess); 
 
   err = nodes_.allocate(nnodes_);
   assert(err == dashmm::kSuccess);
