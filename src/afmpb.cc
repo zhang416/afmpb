@@ -175,7 +175,7 @@ void AFMPB::finalize(bool status) {
   if (!status) 
     assert(nodes_.destroy() == dashmm::kSuccess); 
 
-  if (status) 
+  if (status && mesh_format_) 
     assert(gauss_.destroy() == dashmm::kSuccess); 
 }
 
