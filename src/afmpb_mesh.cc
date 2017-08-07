@@ -201,12 +201,11 @@ std::vector<Node> AFMPB::readMesh() {
     for (int i = 0; i < nelements; ++i) {
       int i1, i2, i3, u1, u2; 
       mesh_ >> i1 >> i2 >> i3 >> u1 >> u2; 
-      elements_[i].index = i; 
       elements_[i].nodes.push_back(i1 - 1); 
       elements_[i].nodes.push_back(i2 - 1); 
       elements_[i].nodes.push_back(i3 - 1);
     }    
-  } else { 
+  } else if (mesh_format_ == 2) { 
     // OFF format, nodes are index from 0 
     for (int i = 0; i < nnodes; ++i) {
       double x, y, z; 
@@ -218,10 +217,25 @@ std::vector<Node> AFMPB::readMesh() {
     for (int i = 0; i < nelements; ++i) {
       int u, i1, i2, i3; 
       mesh_ >> u >> i1 >> i2 >> i3; 
-      elements_[i].index = i; 
       elements_[i].nodes.push_back(i1); 
       elements_[i].nodes.push_back(i2); 
       elements_[i].nodes.push_back(i3); 
+    }
+  } else {
+    // DAT format, nodes are indexed from 1
+    for (int i = 0; i < nnodes; ++i) {
+      double x, y, z; 
+      mesh_ >> x >> y >> z;
+      nodes[i].index = i; 
+      nodes[i].position = dashmm::Point{x, y, z}; 
+    } 
+
+    for (int i = 0; i < nelements; ++i) {
+      int i1, i2, i3; 
+      mesh_ >> i1 >> i2 >> i3; 
+      elements_[i].nodes.push_back(i1 - 1); 
+      elements_[i].nodes.push_back(i2 - 1); 
+      elements_[i].nodes.push_back(i3 - 1);
     }
   }
 
@@ -373,7 +387,7 @@ void AFMPB::processElementGeometry(std::vector<Node> &nodes) {
       // Normalize the normal 
       e.normal = e.normal.scale(0.5 / area); 
 
-      if (mesh_format_ == 2) { // OFF format 
+      if (mesh_format_ == 2 || mesh_format_ == 3) { // OFF format 
         double s31 = sqrt(x31 * x31 + y31 * y31 + z31 * z31); 
         double s21 = sqrt(x21 * x21 + y21 * y21 + z21 * z21); 
         double s32 = sqrt(x32 * x32 + y32 * y32 + z32 * z32); 
@@ -452,7 +466,7 @@ void AFMPB::processElementGeometry(std::vector<Node> &nodes) {
     }
   }
 
-  if (mesh_format_ == 2) {
+  if (mesh_format_ == 2 || mesh_format_ == 3) {
     // Normalize outer normal of each node 
     for (auto && n : nodes) {
       double norm = n.normal_o.norm(); 
@@ -472,7 +486,8 @@ std::vector<GNode> AFMPB::generateGaussianPoint(const Node *nodes) {
   using namespace dashmm; 
 
   std::vector<GNode> gauss; 
-  for (auto && e : elements_) {
+  for (int i = 0; i < elements_.size(); ++i) {
+    Element &e = elements_[i]; 
     int i1 = e.nodes[0]; 
     int i2 = e.nodes[1]; 
     int i3 = e.nodes[2]; 
@@ -481,7 +496,7 @@ std::vector<GNode> AFMPB::generateGaussianPoint(const Node *nodes) {
     const Point &p3 = nodes[i3].position; 
 
     for (int j = 0; j < 7; ++j) {
-      int index = 7 * e.index + j; 
+      int index = 7 * i + j; 
       double zeta = 1 - xi_[j] - eta_[j]; 
       double x = p1.x() * zeta + p2.x() * xi_[j] + p3.x() * eta_[j]; 
       double y = p1.y() * zeta + p2.y() * xi_[j] + p3.y() * eta_[j]; 

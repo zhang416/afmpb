@@ -76,7 +76,6 @@ struct Node {
 }; 
 
 struct Element {
-  int index;                // Index of the element
   double area;              // Area of the element
   dashmm::Point normal;     // Normal direction of the element
   std::vector<int> nodes;   // Index of the nodes of the element
