@@ -5,23 +5,42 @@
 namespace afmpb {
 
 void usage(char *program) {
-  fprintf(stdout, "usage: %s (--pqr-file=FILE)\n"
-          "  (--mesh-format=0 --mesh-density=num --probe-radius=num | \n"
-          "   --mesh-format=[1|2] --mesh-file=FILE)\n"
-          "  [--dielectric-interior=num         [default:            2.0]]\n"
-          "  [--dielectric-exterior=num         [default:           80.0]]\n"
-          "  [--ion-concentration=num           [default:          150.0]]\n"
-          "  [--temperature=num                 [default:          300.0]]\n"
-          "  [--surface-tension=num             [default:          0.005]]\n"
-          "  [--pressure=num                    [default:          0.035]]\n"
-          "  [--log-file=FILE                   [default:     output.txt]]\n"
-          "  [--surface-potential-file=FILE     [default:  potential.txt]]\n"
-          "  [--accuracy=num                    [default:              3]]\n"
-          "  [--restart=num                     [default:             50]]\n"
-          "  [--max-restart=num                 [default:              1]]\n"
-          "  [--rel-tolerance=num               [default:           1e-5]]\n"
-          "  [--abs-tolerance=num               [default:           1e-5]]\n"
-          , program);
+  fprintf(stdout, "usage: %s --pqr-file=FILE [options] \n"
+          "  Mesh options:\n"
+          "  --mesh-format=[0|1|2|3]\n"
+          "    0: built-in mesh, 1: MSMS mesh, 2: OFF mesh, 3: DAT mesh\n"
+          "  --mesh-file=FILE\n"
+          "    required if --mesh-format=[1|2|3]\n"
+          "  --mesh-density=num\n"
+          "    optional if built-in mesh is used, default value is 40.0\n"
+          "  --probe-radius=num\n"
+          "    optional if built-in mesh is used, default value is 0.0\n\n"
+          "  Molecular system options:\n"
+          "  --dilectric-interior=num\n"
+          "    interior dilectric constant, default value is 2.0\n"
+          "  --dilectric-exterior=num\n"
+          "    exterior dilectric constant, default value is 80.0\n"
+          "  --ion-concentration=num\n"
+          "    ionic concentration, default value is 150.0\n"
+          "  --temperature=num\n"
+          "    temperature, default value is 300.0\n"
+          "  --surface-tension=num\n"
+          "    surface tension coefficient, default value is 0.005\n"
+          "  --pressure=num\n"
+          "    pressure, default value is 0.035\n\n"
+          "  Solver options:\n"
+          "  --accuracy=[3|6]\n"
+          "    accuracy of the multipole method, default value is 3-digits\n"
+          "  --restart=num\n"
+          "    maxium dimension of the Krylov space, default value is 50\n"
+          "  --max-restart=num\n"
+          "    maximum number of times GMRES can restart, default value is 1\n\n"
+          "  Output options:\n"
+          "  --log-file=FILE\n"
+          "    name of the log file, default value is output.txt\n"
+          "  --surface-potential-file=FILE\n"
+          "    name of the potential file, default value is potential.txt\n"
+          , program); 
 }
 
 std::unique_ptr<Configuration> init(int argc, char **argv) {
@@ -47,8 +66,6 @@ std::unique_ptr<Configuration> init(int argc, char **argv) {
     {"accuracy", required_argument, 0, 'a'}, 
     {"restart", required_argument, 0, 'k'}, 
     {"max-restart", required_argument, 0, 'n'}, 
-    {"rel-tolerance", required_argument, 0, 'y'},
-    {"abs-tolerance", required_argument, 0, 'z'}, 
     {"help", no_argument, 0, 'h'}, 
     {0, 0, 0, 0}
   };
@@ -58,7 +75,7 @@ std::unique_ptr<Configuration> init(int argc, char **argv) {
   int opt = 0; 
   int long_index = 0; 
   while ((opt = getopt_long(argc, argv, 
-                            "q:m:l:s:f:d:r:i:e:c:t:g:p:a:k:n:y:z:h", 
+                            "q:m:l:s:f:d:r:i:e:c:t:g:p:a:k:n:h", 
                             long_options, &long_index)) != -1) {
     switch (opt) {
     case 'q':
@@ -109,12 +126,6 @@ std::unique_ptr<Configuration> init(int argc, char **argv) {
     case 'n':
       p->max_restart = atoi(optarg); 
       break;
-    case 'y':
-      p->rel_tolerance = atof(optarg);
-      break;
-    case 'z':
-      p->abs_tolerance = atof(optarg);
-      break; 
     case 'h':
     case '?':
       usage(argv[0]); 
@@ -124,7 +135,9 @@ std::unique_ptr<Configuration> init(int argc, char **argv) {
   }
 
   // Check if the command line arguments are valid 
-  if (p->pqr_file.empty() || (p->mesh_format && p->mesh_file.empty())) {
+  if (p->pqr_file.empty() || 
+      (p->mesh_format && p->mesh_file.empty()) ||
+      !(p->accuracy == 3 || p->accuracy == 6)) {
     usage(argv[0]); 
     delete p; 
     p = nullptr; 
@@ -165,12 +178,16 @@ AFMPB::AFMPB(std::unique_ptr<Configuration> p) {
   accuracy_ = p->accuracy; 
   restart_ = p->restart; 
   max_restart_ = p->max_restart; 
-  rel_tolerance_ = p->rel_tolerance; 
-  abs_tolerance_ = p->abs_tolerance; 
 
-  // Only 3-/6-digit accuracy are supported. For threshold, 50 is used for
-  // 3-digit accuracy and 80 is used for 6-digit accuracy. 
-  refine_limit_ = (accuracy_ == 3 ? 50 : 80); 
+  if (accuracy_ == 3) {
+    refine_limit_ = 50; 
+    rel_tolerance_ = 1e-2; 
+    abs_tolerance_ = 1e-2; 
+  } else if (accuracy_ == 6) {
+    refine_limit_ = 50; 
+    rel_tolerance_ = 1e-5; 
+    abs_tolerance_ = 1e-5; 
+  }
 
   if (mesh_format_ == 0) {
     cut1_ = 0.1; 
