@@ -1,3 +1,4 @@
+#include <cstdio>
 #include <iomanip>
 #include <hpx/hpx.h>
 #include "afmpb.h"
@@ -77,14 +78,24 @@ void AFMPB::computeEnergy(bool status) {
   assert(nodes_.destroy() == dashmm::kSuccess); 
   std::unique_ptr<GNode []> gauss; 
 
-  if (mesh_format_) {
-    // Generate the Gaussian points on each mesh element
-    auto pts = generateGaussianPoint(nodes.get()); 
-    ngauss_ = pts.size(); 
-    auto err = gauss_.allocate(ngauss_); 
-    err = gauss_.put(0, ngauss_, pts.data()); 
-    assert(err == dashmm::kSuccess); 
+  int myrank = hpx_get_my_rank(); 
 
+  if (mesh_format_) {
+    std::vector<GNode> temp; 
+
+    if (!myrank) {
+      // Generate Gaussian points on rank 0 
+      temp = generateGaussianPoint(nodes.get()); 
+    }
+
+    ngauss_ = temp.size(); 
+    
+    // Put Gaussian points into dashmm array
+    auto err = gauss_.allocate(ngauss_); 
+    err = gauss_.put(0, ngauss_, temp.data()); 
+    assert(err == dashmm::kSuccess); 
+    temp.clear(); // Free up memory
+   
     // Compute the values on the Gaussian points 
     dashmm::FMM97<Atom, GNode, dashmm::AFMPBRHS> method{}; 
     std::vector<double> kparam{};
@@ -102,10 +113,7 @@ void AFMPB::computeEnergy(bool status) {
                 });
     }
   } 
-  
-
-  // Rank 0 computes and reports the result 
-  int myrank = hpx_get_my_rank(); 
+ 
   if (myrank) 
     return; 
 
