@@ -41,8 +41,8 @@ struct Configuration {
   int accuracy = 3;
   int restart = 50; 
   int max_restart = 1; 
-  double rel_tolerance = 1e-5;
-  double abs_tolerance = 1e-4; 
+  double rel_tolerance = 1e-2;
+  double abs_tolerance = 1e-2; 
 }; 
 
 struct Atom {
