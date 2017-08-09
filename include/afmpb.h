@@ -133,8 +133,8 @@ private:
                      const Node *nodes, int nnodes) const; 
   
   // Generate Gaussian interpolation points for energy computation 
-  std::vector<GNode> generateGaussianPoint(const Node *nodes); 
-
+  GNode *generateGaussianPoint(const Node *nodes); 
+  
   // Perform various dot product 
   double generalizedInnerProduct(int x, int y); 
 

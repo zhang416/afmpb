@@ -81,20 +81,17 @@ void AFMPB::computeEnergy(bool status) {
   int myrank = hpx_get_my_rank(); 
 
   if (mesh_format_) {
-    std::vector<GNode> temp; 
+    GNode *temp{nullptr}; 
+    ngauss_ = 0; 
 
     if (!myrank) {
       // Generate Gaussian points on rank 0 
       temp = generateGaussianPoint(nodes.get()); 
     }
-
-    ngauss_ = temp.size(); 
     
     // Put Gaussian points into dashmm array
-    auto err = gauss_.allocate(ngauss_); 
-    err = gauss_.put(0, ngauss_, temp.data()); 
+    auto err = gauss_.allocate(ngauss_, temp); 
     assert(err == dashmm::kSuccess); 
-    temp.clear(); // Free up memory
    
     // Compute the values on the Gaussian points 
     dashmm::FMM97<Atom, GNode, dashmm::AFMPBRHS> method{}; 

@@ -216,7 +216,7 @@ public:
   size_t size(void *object) const override {
     return sizeof(int) + // Index 
       + sizeof(Point) * 2 + // position, normal_o 
-      sizeof(double) * 2; // gmres[0]@2
+      sizeof(double) * 5; // gmres[0]@2, rhs[0]@2, area
   }
 
   void *serialize(void *object, void *buffer) const override {
@@ -239,6 +239,13 @@ public:
     double *v = &(n->gmres[0]); 
     memcpy(dest, v, bytes); 
     dest += bytes; 
+
+    v = &(n->rhs[0]); 
+    memcpy(dest, v, bytes); 
+    dest += bytes; 
+
+    memcpy(dest, &(n->area), sizeof(double)); 
+    dest += sizeof(double); 
 
     return dest;
   }
@@ -264,8 +271,12 @@ public:
     n->gmres[0] = v[0]; 
     n->gmres[1] = v[1]; 
 
-    src += sizeof(double) * 2; 
+    n->rhs[0] = v[2]; 
+    n->rhs[1] = v[3]; 
 
+    n->area = v[4]; 
+    src += sizeof(double) * 5; 
+  
     return src;
   }
 }; 

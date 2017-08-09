@@ -482,11 +482,13 @@ void AFMPB::processElementGeometry(std::vector<Node> &nodes) {
   }
 }
 
-std::vector<GNode> AFMPB::generateGaussianPoint(const Node *nodes) {
+GNode *AFMPB::generateGaussianPoint(const Node *nodes) {
   using namespace dashmm; 
+  int nelements = elements_.size(); 
+  GNode *gauss = new GNode[nelements * 7]; 
+  ngauss_ = nelements * 7; 
 
-  std::vector<GNode> gauss; 
-  for (int i = 0; i < elements_.size(); ++i) {
+  for (int i = 0; i < nelements; ++i) {
     Element &e = elements_[i]; 
     int i1 = e.nodes[0]; 
     int i2 = e.nodes[1]; 
@@ -501,7 +503,9 @@ std::vector<GNode> AFMPB::generateGaussianPoint(const Node *nodes) {
       double x = p1.x() * zeta + p2.x() * xi_[j] + p3.x() * eta_[j]; 
       double y = p1.y() * zeta + p2.y() * xi_[j] + p3.y() * eta_[j]; 
       double z = p1.z() * zeta + p2.z() * xi_[j] + p3.z() * eta_[j]; 
-      gauss.emplace_back(index, Point{x, y, z}, e.normal); 
+      gauss[index].index = index; 
+      gauss[index].position = Point{x, y, z}; 
+      gauss[index].normal_o = e.normal; 
     }
   }
 
