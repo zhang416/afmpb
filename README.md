@@ -25,7 +25,7 @@ following steps:
 This put the executable `afmpb` under `afmpb/example` directory. 
 
 ### Job Examples 
-The minimum input to 'afmpb' is the PQR file. This file is first processed by 
+The minimum input to `afmpb` is the PQR file. This file is first processed by 
 `parsePQR.sh` which extracts the atoms information. 
 
 AFMPB can read meshes generated from [MSMS](https://www.ncbi.nlm.nih.gov/pubmed/8906967)
