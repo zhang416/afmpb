@@ -1,4 +1,3 @@
-# Adaptive Fast Multipole Poisson-Boltzmann Solver
 The Adaptive Fast Multipole Poisson-Boltzmann (AFMPB) package computes the 
 numerical solution of the linearized Poisson-Boltzmann equation that 
 describes electrostatic interactions of molecular systems in ionic solutions. 
