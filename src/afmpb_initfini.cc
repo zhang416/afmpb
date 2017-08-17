@@ -8,7 +8,7 @@ void usage(char *program) {
   fprintf(stdout, "usage: %s --pqr-file=FILE [options] \n"
           "  Mesh options:\n"
           "  --mesh-format=[0|1|2|3]\n"
-          "    0: built-in mesh, 1: MSMS mesh, 2: OFF mesh, 3: DAT mesh\n"
+          "    0: built-in mesh, 1: MSMS, 2: TMSMesh\n"
           "  --mesh-file=FILE\n"
           "    required if --mesh-format=[1|2|3]\n"
           "  --mesh-density=num\n"
@@ -38,8 +38,8 @@ void usage(char *program) {
           "  Output options:\n"
           "  --log-file=FILE\n"
           "    name of the log file, default value is output.txt\n"
-          "  --surface-potential-file=FILE\n"
-          "    name of the potential file, default value is potential.txt\n"
+          "  --potential-file=FILE\n"
+          "    name of the potential file, no output written if unspecified\n"
           , program); 
 }
 

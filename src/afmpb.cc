@@ -36,13 +36,13 @@ void AFMPB::setup() {
            << std::setw(14) << std::right << elements_.size() 
            << "\n" << std::flush;
     }
-
+    
     log_ << std::setw(50) << std::left << "... n_nodes:"
          << std::setw(14) << std::right << nodes.size() << "\n"
-         << std::setw(50) << std::left << "... Area: "
+         << std::setw(50) << std::left << "... Area (A^2): "
          << std::setw(14) << std::right << std::setprecision(5)
          << std::scientific << area_ << "\n"
-         << std::setw(50) << std::left << "... Volume: "
+         << std::setw(50) << std::left << "... Volume (A^3): "
          << std::setw(14) << std::right << std::setprecision(5)
          << std::scientific << volume_ << "\n"
          << std::setw(50) << std::left << "... Kap: "
@@ -129,19 +129,22 @@ void AFMPB::computeEnergy(bool status) {
   }
 
   log_ << "\nResults:\n"
-       << std::setw(50) << std::left << "Total solvation energy:"
+       << std::setw(50) << std::left << "Total solvation energy (kcal/mol):"
        << std::setw(14) << std::right << std::setprecision(5)
        << std::scientific << nonpolar + polar << "\n"
-       << std::setw(50) << std::left << "... Polar part:"
+       << std::setw(50) << std::left << "... Polar part (kcal/mol):"
        << std::setw(14) << std::right << std::setprecision(5)
        << std::scientific << polar << "\n"
-       << std::setw(50) << std::left << "... Nonpolar part:"
+       << std::setw(50) << std::left << "... Nonpolar part (kcal/mol):"
        << std::setw(14) << std::right << std::setprecision(5)
        << std::scientific << nonpolar << "\n" << std::flush;
   
   // Write potential before nodes goes out of scope if the stream is open
   if (potential_.is_open()) {
-    potential_.precision(8);
+    // Write the number of nodes and number of elements in the first line
+    potential_ << nnodes_ << " " << elements_.size() << "\n"; 
+
+    potential_.precision(4);
     potential_ << std::scientific;
     for (int i = 0; i < nnodes_; ++i) {
       const Node &n = nodes[i];
