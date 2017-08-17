@@ -15,10 +15,6 @@
       <h1 class="project-name">{{ site.title | default: site.github.repository_name }}</h1>
       <h2 class="project-tagline">{{ site.description | default: site.github.project_tagline }}</h2>
       <a href="./index.html" , class="btn"> Home </a> 
-      <a href="./install.html", class="btn"> Installation </a> 
-      <a href="./example.html", class="btn"> Example </a> 
-      <a href="./ref.html", class="btn"> Reference </a> 
-      <!--
       {% if site.github.is_project_page %}
         <a href="{{ site.github.repository_url }}" class="btn">View on GitHub</a>
       {% endif %}
@@ -26,10 +22,9 @@
         <a href="https://github.com/zhang416/afmpb/zipball/master" class="btn">Download .zip</a>
         <a href="https://github.com/zhang416/afmpb/tarball/master" class="btn">Download .tar.gz</a>
       {% endif %}
-        -->
-        {% for p in site.navpages %}
-        <a {% if p.url == page.url%}class="active"{% endif %} href="{{ site.baseurl }}{{ p.url }}">{{ p.title }}</a>
-        {% endfor %}
+      <a href="./install.html", class="btn"> Installation </a> 
+      <a href="./example.html", class="btn"> Example </a> 
+      <a href="./ref.html", class="btn"> Reference </a> 
     </section>
 
     <section class="main-content">
