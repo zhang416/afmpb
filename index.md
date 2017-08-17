@@ -66,10 +66,3 @@ Poisson-Boltzmann Solver for Calculating Electrostatics in Biomolecular Systems.
 * B. Zhang, B. Peng, J. Huang, N. P. Pitsianis, X. Sun, B. Lu. **Parallel AFMPB Solver 
 with Automatic Surface Meshing for Calculation of Molecular Solvation Free Energy.** 
 _Comput. Phys. Commun._ 190(2015) 173 
-
-
-Benzhuo Lu, Xiaolin Cheng, Jingfang Huang, J. Andrew McCammon, Comput. Phys. Commun. 181(2010)1150
-
-Parallel AFMPB solver with automatic surface meshing for calculation of molecular solvation free energy ☆
-
-Bo Zhanga, Bo Pengb, Jingfang Huangc, Nikos P. Pitsianisd, e, Xiaobai Sune, Benzhuo Lub,
