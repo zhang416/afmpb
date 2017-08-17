@@ -1,4 +1,8 @@
-# Adaptive Fast Multipole Poisson-Boltzmann Solver
+---
+layout: default
+title: AFMPB 
+--- 
+
 The Adaptive Fast Multipole Poisson-Boltzmann (AFMPB) package computes the 
 numerical solution of the linearized Poisson-Boltzmann equation that 
 describes electrostatic interactions of molecular systems in ionic solutions. 
@@ -7,6 +11,10 @@ The linearized Poisson-Boltzmann equation is reformulated as a boundary
 integral equation and is subsequently discretized using the node-patch scheme. 
 The resulting linear system is solved using GMRES. Within each iteration, the 
 matrix-vector multiplication is accelerated using the DASHMM library. 
+
+
+<!--
+# Adaptive Fast Multipole Poisson-Boltzmann Solver
 
 ### Installation
 DASHMM is built on top of the Asynchronous Multi-Tasking HPX-5 runtime system. 
@@ -55,3 +63,4 @@ srun -n 2 -c 48 ./afmpb --pqr-file=fas2.pqr.ext --mesh-format=2 --mesh-file=fas2
 ```
 The `-c` option equals to the number of cores Slurm sees on each compute node and the `--hpx-threads`
 option equals the number of physical cores available on the compute node. 
+-->
