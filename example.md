@@ -44,4 +44,11 @@ aprun -n 2 -d 48 ./afmpb ...
 ```
 
 Finally, the `--potential-file` option allows user to specify an output stream to hold the 
-results of the potentials. The output can be then visualized using VCMM. ![3k1q](/image/3k1q6d.png)
+results of the potentials. The output can be then visualized using VCMM. 
+
+![3k1q](/image/3k1q6d.png)
+
+This picture shows the surface potential of the aquareovirus virion, 3K1Q, consisting of 203,111
+atoms. The surface mesh was generated using TMSMesh, consisting of 7,788,246 triangle elements
+and 3,888,281 nodes. The results were computed requiring 6-digit accuracy on DASHMM. The polar energy
+is -8.81808e4 kcal/mol and the total solvation energy is -2.42747e4 kcal/mol. 
