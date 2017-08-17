@@ -9,7 +9,7 @@ Version 4.1.0 of HPX-5 can be downloaded [here](https://hpx.crest.iu.edu/downloa
 automatically downloaded by AFMPB when the application is built. 
 
 Users must install HPX-5 on their systems before installing the AFMPB solver. For users
-who use AFMPB on shared memory computers only, the HPX-5 can be built in the following
+who use AFMPB on shared memory computers only, HPX-5 can be built in the following
 steps 
 ```
 > cd /path/to/hpx
@@ -18,7 +18,7 @@ steps
 > make install
 ```
 For users who use AFMPB on distributed memory computers, HPX-5 currently specifies two 
-network interfaces: 
+network interfaces to choose from: 
 1. the `ISend/IRecv` interface with the MPI transport
 2. the _Put-with-completion_ (PWC) interface with the Photon transport. 
 HPX-5 can be built with either transport. 
