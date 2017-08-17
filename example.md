@@ -44,4 +44,4 @@ aprun -n 2 -d 48 ./afmpb ...
 ```
 
 Finally, the `--potential-file` option allows user to specify an output stream to hold the 
-results of the potentials. The output can be then visualized using VCMM. ![3k1q](/images/3k1q6d.png)
+results of the potentials. The output can be then visualized using VCMM. ![3k1q](/image/3k1q6d.png)
