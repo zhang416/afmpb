@@ -31,6 +31,10 @@ void usage(char *program) {
           "  Solver options:\n"
           "  --accuracy=[3|6]\n"
           "    accuracy of the multipole method, default value is 3-digits\n"
+          "  --rel-tolerance=num\n"
+          "    GMRES relative tolerance, default value is 1e-2 \n"
+          "  --abs-tolerance=num\n"
+          "    GMRES absolute tolerance, default value is 0\n" 
           "  --restart=num\n"
           "    maxium dimension of the Krylov space, default value is 50\n"
           "  --max-restart=num\n"
@@ -64,6 +68,8 @@ std::unique_ptr<Configuration> init(int argc, char **argv) {
     {"surface-tension", required_argument, 0, 'g'}, 
     {"pressure", required_argument, 0, 'p'}, 
     {"accuracy", required_argument, 0, 'a'}, 
+    {"rel-tolerance", required_argument, 0, 'y'}, 
+    {"abs-tolerance", required_argument, 0, 'z'}, 
     {"restart", required_argument, 0, 'k'}, 
     {"max-restart", required_argument, 0, 'n'}, 
     {"help", no_argument, 0, 'h'}, 
@@ -75,7 +81,7 @@ std::unique_ptr<Configuration> init(int argc, char **argv) {
   int opt = 0; 
   int long_index = 0; 
   while ((opt = getopt_long(argc, argv, 
-                            "q:m:l:s:f:d:r:i:e:c:t:g:p:a:k:n:h", 
+                            "q:m:l:s:f:d:r:i:e:c:t:g:p:a:k:n:y:z:h", 
                             long_options, &long_index)) != -1) {
     switch (opt) {
     case 'q':
@@ -126,6 +132,12 @@ std::unique_ptr<Configuration> init(int argc, char **argv) {
     case 'n':
       p->max_restart = atoi(optarg); 
       break;
+    case 'y':
+      p->rel_tolerance = atof(optarg);
+      break;
+    case 'z':
+      p->abs_tolerance = atof(optarg);
+      break; 
     case 'h':
     case '?':
       usage(argv[0]); 
@@ -178,16 +190,9 @@ AFMPB::AFMPB(std::unique_ptr<Configuration> p) {
   accuracy_ = p->accuracy; 
   restart_ = p->restart; 
   max_restart_ = p->max_restart; 
-
-  if (accuracy_ == 3) {
-    refine_limit_ = 50; 
-    rel_tolerance_ = 1e-2; 
-    abs_tolerance_ = 1e-2; 
-  } else if (accuracy_ == 6) {
-    refine_limit_ = 50; 
-    rel_tolerance_ = 1e-5; 
-    abs_tolerance_ = 1e-5; 
-  }
+  rel_tolerance_ = p->rel_tolerance; 
+  abs_tolerance_ = p->abs_tolerance; 
+  refine_limit_ = 50; 
 
   if (mesh_format_ == 0) {
     cut1_ = 0.1; 

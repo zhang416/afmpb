@@ -39,10 +39,10 @@ struct Configuration {
   double surface_tension = 0.005; 
   double pressure = 0.035; 
   int accuracy = 3;
+  double rel_tolerance = 1e-2;
+  double abs_tolerance = 0.0;   
   int restart = 50; 
   int max_restart = 1; 
-  double rel_tolerance = 1e-2;
-  double abs_tolerance = 1e-2; 
 }; 
 
 struct Atom {
