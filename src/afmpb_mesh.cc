@@ -1,22 +1,40 @@
+#include <sstream>
+#include <string> 
+#include <cstring> 
 #include "afmpb.h"
 
 namespace afmpb {
 
 Atom *AFMPB::readAtoms() {
-  pqr_ >> natoms_; 
-  
-  Atom *molecule = new Atom[natoms_]; 
   double probe_radius = (!mesh_format_ ? probe_radius_ : 0.0); 
+  std::vector<Atom> molecule; 
+  std::string line; 
 
-  for (int i = 0; i < natoms_; ++i) {
-    double x, y, z, q, r; 
-    pqr_ >> x >> y >> z >> q >> r;
-    molecule[i].position = dashmm::Point{x, y, z}; 
-    molecule[i].charge = q; 
-    molecule[i].radius = r + probe_radius; 
+  while (getline(pqr_, line)) {
+    std::istringstream S(line); 
+    std::string type; 
+    S >> type; 
+    
+    if (type.compare("ATOM") == 0 || type.compare("HETATM") == 0) {
+      // Only parse lines starting with the world "ATOM" or "HETATM"
+      // Then skip the next four fields. 
+      std::string unused; 
+      S >> unused; 
+      S >> unused; 
+      S >> unused; 
+      S >> unused; 
+
+      // Read x, y, z, q, r 
+      double x, y, z, q, r; 
+      S >> x >> y >> z >> q >> r; 
+      molecule.emplace_back(dashmm::Point{x, y, z}, q, r + probe_radius);
+    }    
   }
 
-  return molecule; 
+  natoms_ = molecule.size(); 
+  Atom *retval = new Atom[natoms_]; 
+  memcpy(retval, molecule.data(), sizeof(Atom) * natoms_); 
+  return retval; 
 }
 
 std::vector<Node> AFMPB::generateMesh(const Atom *molecule) {

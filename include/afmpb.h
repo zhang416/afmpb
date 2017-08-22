@@ -46,6 +46,8 @@ struct Configuration {
 }; 
 
 struct Atom {
+  Atom(dashmm::Point p, double q, double r) 
+    : position{p}, charge{q}, radius{r} { } 
   Atom() { }
   dashmm::Point position; 
   double charge;  
