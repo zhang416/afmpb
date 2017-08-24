@@ -173,7 +173,8 @@ class AFMPBLHS {
     return data[i];
   }
 
-  std::unique_ptr<expansion_t> S_to_M(Source *first, Source *last) const {
+  std::unique_ptr<expansion_t> S_to_M(const Source *first, 
+                                      const Source *last) const {
     Point center = views_.center();
     double scale_y = views_.scale(); 
     int level = builtin_yukawa_table_->level(scale_y); 
@@ -200,7 +201,8 @@ class AFMPBLHS {
     return std::unique_ptr<expansion_t>{ret};
   }
 
-  std::unique_ptr<expansion_t> S_to_L(Source *first, Source *last) const {
+  std::unique_ptr<expansion_t> S_to_L(const Source *first, 
+                                      const Source *last) const {
     Point center = views_.center();
     double scale_y = views_.scale();
     int level = builtin_yukawa_table_->level(scale_y); 
@@ -320,7 +322,7 @@ class AFMPBLHS {
     }
   }
 
-  void S_to_T(Source *s_first, Source *s_last,
+  void S_to_T(const Source *s_first, const Source *s_last,
               Target *t_first, Target *t_last) const {  
     int key = s_first->index; 
     int s_iter = builtin_afmpb_table_->s_iter(); 
@@ -460,7 +462,8 @@ class AFMPBLHS {
  private:
   ViewSet views_;
 
-  void generate_direct_table(Target *t, Source *s_first, Source *s_last, 
+  void generate_direct_table(Target *t, const Source *s_first, 
+                             const Source *s_last, 
                              std::vector<double> &table) const {    
     double dielectric = builtin_afmpb_table_->dielectric();
     double cut1 = builtin_afmpb_table_->cut1(); 
@@ -500,8 +503,8 @@ class AFMPBLHS {
     }
   }
 
-  void compute_close_coeff(Target *t, Source *s, double &A, double &B, 
-                           double &C, double &D) const {
+  void compute_close_coeff(Target *t, const Source *s, double &A, 
+                           double &B, double &C, double &D) const {
     double dielectric = builtin_afmpb_table_->dielectric(); 
 
     auto patch = s->patch; 
@@ -517,8 +520,8 @@ class AFMPBLHS {
     D /= dielectric; 
   }
   
-  void compute_nsingular_coeff(Target *t, Source *s, double &A, double &B, 
-                               double &C, double &D) const {
+  void compute_nsingular_coeff(Target *t, const Source *s, double &A, 
+                               double &B, double &C, double &D) const {
     compute_coeff(t->position, t->normal_o, s->position, s->normal_i, 
                   A, B, C, D); 
 
@@ -529,7 +532,8 @@ class AFMPBLHS {
     D *= s->projected / dielectric; 
   }
 
-  void compute_coeff(Point &t, Point &tn, Point &s, Point &sn, 
+  void compute_coeff(const Point &t, const Point &tn, 
+                     const Point &s, const Point &sn, 
                      double &A, double &B, double &C, double &D) const {
     double lambda = builtin_yukawa_table_->lambda(); 
     double sigma = builtin_afmpb_table_->sigma(); 

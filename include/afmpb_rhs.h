@@ -111,7 +111,8 @@ class AFMPBRHS {
     return data[i];
   }
 
-  std::unique_ptr<expansion_t> S_to_M(Source *first, Source *last) const {
+  std::unique_ptr<expansion_t> S_to_M(const Source *first, 
+                                      const Source *last) const {
     double scale = views_.scale();
     Point center = views_.center();
     expansion_t *retval{new expansion_t{kSourcePrimary, scale, center}};
@@ -123,7 +124,8 @@ class AFMPBRHS {
    return std::unique_ptr<expansion_t>{retval};
   }
 
-  std::unique_ptr<expansion_t> S_to_L(Source *first, Source *last) const {
+  std::unique_ptr<expansion_t> S_to_L(const Source *first, 
+                                      const Source *last) const {
     double scale = views_.scale();
     Point center = views_.center();
     expansion_t *retval{new expansion_t{kTargetPrimary}};
@@ -181,7 +183,7 @@ class AFMPBRHS {
     }
   }
 
-  void S_to_T(Source *s_first, Source *s_last,
+  void S_to_T(const Source *s_first, const Source *s_last,
               Target *t_first, Target *t_last) const {
     for (auto i = t_first; i != t_last; ++i) {
       double potential = 0, fx = 0, fy = 0, fz = 0; 
