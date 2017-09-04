@@ -1,4 +1,4 @@
-#Adaptive Fast Multipole Poisson-Boltzmann Solver 
+# Adaptive Fast Multipole Poisson-Boltzmann Solver 
 
 The Adaptive Fast Multipole Poisson-Boltzmann (AFMPB) package computes the
 numerical solution of the linearlized Poisson-Boltzmann equation that describes
