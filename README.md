@@ -35,6 +35,7 @@ For users who use AFMPB on distributed memory computers, HPX-5 currently
 specifies two network interfaces to choose from: 
 1. the `ISend/IRecv` interface with the MPI transport 
 2. the _Put-with-completion_ (PWC) interface with the Photon transport.  
+
 HPX-5 can be built with either transport.
 
 To configure HPX-5 with MPI network, one adds `--enable-mpi` to the configure
