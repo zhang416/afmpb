@@ -1,15 +1,15 @@
-AFMPB depends on two external libraries: DASHMM and HPX-5. DASHMM leverages 
+DAFMPB depends on two external libraries: DASHMM and HPX-5. DASHMM leverages 
 the global address space of the HPX-5 runtime system to provide a unified
 evaluation of the multipole methods on both shared and distributed memory computers. 
 This enables the latest version of AFMPB to operate on distributed memory 
 computers while at the same time maintaining backward compatibility on shared
 memory computers. 
 
-Version 4.1.0 of HPX-5 can be downloaded [here](https://hpx.crest.iu.edu/download). DASHMM is 
+Version 4.1.0 of HPX-5 is provided in 'contrib' directory. DASHMM is 
 automatically downloaded by AFMPB when the application is built. 
 
-Users must install HPX-5 on their systems before installing the AFMPB solver. For users
-who use AFMPB on shared memory computers only, HPX-5 can be built in the following
+Users must install HPX-5 on their systems before installing the DAFMPB solver. For users
+who use DAFMPB on shared memory computers only, HPX-5 can be built in the following
 steps 
 ```
 > cd /path/to/hpx
@@ -17,7 +17,7 @@ steps
 > make
 > make install
 ```
-For users who use AFMPB on distributed memory computers, HPX-5 currently specifies two 
+For users who use DAFMPB on distributed memory computers, HPX-5 currently specifies two 
 network interfaces to choose from: 
 1. the `ISend/IRecv` interface with the MPI transport
 2. the _Put-with-completion_ (PWC) interface with the Photon transport. 
@@ -40,12 +40,12 @@ and Cray's GEMINI and ARIES via uGNI (`libugni`). On Cray machines you need to i
 Finally, the `--enable-hugetlbfs` option causes HPX-5 heap to be mapped with huge pages, 
 which is necessary for larger heaps on some Cray Gemini machines. 
 
-Once HPX-5 is installed, the AFMPB package can be built in the following steps:
+Once HPX-5 is installed, the DAFMPB package can be built in the following steps:
 ```
-> git clone git@github.com:zhang416/afmpb.git
-> mkdir afmpb-build
-> cd afmpb-build
-> cmake ../afmpb 
+> git clone git@github.com:zhang416/dafmpb.git
+> mkdir dafmpb-build
+> cd dafmpb-build
+> cmake ../dafmpb 
 > make 
 ```
-This put the executable `afmpb` under `afmpb/example` directory. 
+This put the executable `dafmpb` under `dafmpb/example` directory. 
