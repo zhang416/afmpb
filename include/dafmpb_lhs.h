@@ -1,5 +1,5 @@
 //=============================================================================
-// AFMPB: Adaptive Fast Multipole Poisson-Boltzmann Solver 
+// DAFMPB: DASHMM Accelerated Adaptive Fast Multipole Poisson-Boltzmann Solver 
 //
 // Portions Copyright (c) 2014, Institute of Computational Mathematics, CAS
 // Portions Copyright (c) 2014, Oak Ridge National Laboratory
@@ -12,8 +12,8 @@
 // the Free Software Foundation. 
 //=============================================================================
 
-#ifndef __AFMPB_LHS_H__
-#define __AFMPB_LHS_H__
+#ifndef __DAFMPB_LHS_H__
+#define __DAFMPB_LHS_H__
 
 #include <cmath>
 #include <complex>
@@ -39,10 +39,10 @@ void dyuk_s_to_m(Point dist, double q, double scale, Point normal,
 void dyuk_s_to_l(Point dist, double q, double scale, Point normal, 
                  dcomplex_t *L); 
 
-class AFMPBTable {
+class DAFMPBTable {
 public: 
-  AFMPBTable(double dielectric, double cut1, double cut2, 
-             double sigma, int restart) 
+  DAFMPBTable(double dielectric, double cut1, double cut2, 
+              double sigma, int restart) 
     : dielectric_{dielectric}, cut1_{cut1}, cut2_{cut2}, 
     sigma_{sigma}, restart_{restart} { }
   double dielectric() const {return dielectric_;}
@@ -63,21 +63,21 @@ private:
   int iter_ = 0; 
 };
 
-extern std::unique_ptr<AFMPBTable> builtin_afmpb_table_; 
+extern std::unique_ptr<DAFMPBTable> builtin_dafmpb_table_; 
 
-void update_afmpb_table(double dielectric, double cut1, double cut2, 
-                        double sigma, int restart); 
+void update_dafmpb_table(double dielectric, double cut1, double cut2, 
+                         double sigma, int restart); 
 
 template <typename Source, typename Target>
-class AFMPBLHS {
+class DAFMPBLHS {
  public:
   using source_t = Source;
   using target_t = Target;
-  using expansion_t = AFMPBLHS<Source, Target>;
+  using expansion_t = DAFMPBLHS<Source, Target>;
 
-  AFMPBLHS(ExpansionRole role, double scale = 1.0, Point center = Point{})
+  DAFMPBLHS(ExpansionRole role, double scale = 1.0, Point center = Point{})
     : views_{ViewSet{role, center, scale}} {
-    // The AFMPBLHS class handles four kernel expansions
+    // The DAFMPBLHS class handles four kernel expansions
     // Single-layer Laplace potential
     // Double-layer Laplace potential
     // Single-layer Yukawa potential
@@ -127,9 +127,9 @@ class AFMPBLHS {
     }
   }
 
-  AFMPBLHS(const ViewSet &views) : views_{views} { }
+  DAFMPBLHS(const ViewSet &views) : views_{views} { }
 
-  ~AFMPBLHS() {
+  ~DAFMPBLHS() {
     int count = views_.count();
     if (count) {
       for (int i = 0; i < count; ++i) {
@@ -179,7 +179,7 @@ class AFMPBLHS {
     double scale_y = views_.scale(); 
     int level = builtin_yukawa_table_->level(scale_y); 
     double scale_l = builtin_laplace_table_->scale(level);    
-    int iter = builtin_afmpb_table_->s_iter(); 
+    int iter = builtin_dafmpb_table_->s_iter(); 
 
     expansion_t *ret{new expansion_t{kSourcePrimary, scale_y, center}};
     dcomplex_t *M1 = reinterpret_cast<dcomplex_t *>(ret->views_.view_data(0));
@@ -207,7 +207,7 @@ class AFMPBLHS {
     double scale_y = views_.scale();
     int level = builtin_yukawa_table_->level(scale_y); 
     double scale_l = builtin_laplace_table_->scale(level); 
-    int iter = builtin_afmpb_table_->s_iter(); 
+    int iter = builtin_dafmpb_table_->s_iter(); 
 
     expansion_t *ret{new expansion_t{kTargetPrimary}};
     dcomplex_t *L1 = reinterpret_cast<dcomplex_t *>(ret->views_.view_data(0));
@@ -281,9 +281,9 @@ class AFMPBLHS {
     double scale_y = views_.scale(); 
     int level = builtin_yukawa_table_->level(scale_y); 
     double scale_l = builtin_laplace_table_->scale(level); 
-    double dielectric = builtin_afmpb_table_->dielectric(); 
+    double dielectric = builtin_dafmpb_table_->dielectric(); 
     double lambda = builtin_yukawa_table_->lambda(); 
-    int iter = builtin_afmpb_table_->t_iter(); 
+    int iter = builtin_dafmpb_table_->t_iter(); 
 
     dcomplex_t *L1 = reinterpret_cast<dcomplex_t *>(views_.view_data(0));
     dcomplex_t *L2 = reinterpret_cast<dcomplex_t *>(views_.view_data(1));
@@ -325,8 +325,8 @@ class AFMPBLHS {
   void S_to_T(const Source *s_first, const Source *s_last,
               Target *t_first, Target *t_last) const {  
     int key = s_first->index; 
-    int s_iter = builtin_afmpb_table_->s_iter(); 
-    int t_iter = builtin_afmpb_table_->t_iter(); 
+    int s_iter = builtin_dafmpb_table_->s_iter(); 
+    int t_iter = builtin_dafmpb_table_->t_iter(); 
 
     for (auto i = t_first; i != t_last; ++i) {
       double f = 0, h = 0; 
@@ -425,9 +425,9 @@ class AFMPBLHS {
                            const std::vector<double> &kernel_params) {
     update_laplace_table(n_digits, domain_size); 
     update_yukawa_table(n_digits, domain_size, kernel_params[0]); 
-    update_afmpb_table(kernel_params[1], kernel_params[2], 
-                       kernel_params[3], kernel_params[4], 
-                       ((int) kernel_params[5])); 
+    update_dafmpb_table(kernel_params[1], kernel_params[2], 
+                        kernel_params[3], kernel_params[4], 
+                        ((int) kernel_params[5])); 
   }
 
   static void delete_table() { }
@@ -465,9 +465,9 @@ class AFMPBLHS {
   void generate_direct_table(Target *t, const Source *s_first, 
                              const Source *s_last, 
                              std::vector<double> &table) const {    
-    double dielectric = builtin_afmpb_table_->dielectric();
-    double cut1 = builtin_afmpb_table_->cut1(); 
-    double cut2 = builtin_afmpb_table_->cut2(); 
+    double dielectric = builtin_dafmpb_table_->dielectric();
+    double cut1 = builtin_dafmpb_table_->cut1(); 
+    double cut2 = builtin_dafmpb_table_->cut2(); 
 
     double factor = (1.0 / 2.0 + 1.0 / 2.0 / dielectric) * 4 * M_PI; 
 
@@ -505,7 +505,7 @@ class AFMPBLHS {
 
   void compute_close_coeff(Target *t, const Source *s, double &A, 
                            double &B, double &C, double &D) const {
-    double dielectric = builtin_afmpb_table_->dielectric(); 
+    double dielectric = builtin_dafmpb_table_->dielectric(); 
 
     auto patch = s->patch; 
     for (auto && p : patch) {
@@ -525,7 +525,7 @@ class AFMPBLHS {
     compute_coeff(t->position, t->normal_o, s->position, s->normal_i, 
                   A, B, C, D); 
 
-    double dielectric = builtin_afmpb_table_->dielectric(); 
+    double dielectric = builtin_dafmpb_table_->dielectric(); 
     A *= s->area;
     B *= s->projected; 
     C *= s->area; 
@@ -536,8 +536,8 @@ class AFMPBLHS {
                      const Point &s, const Point &sn, 
                      double &A, double &B, double &C, double &D) const {
     double lambda = builtin_yukawa_table_->lambda(); 
-    double sigma = builtin_afmpb_table_->sigma(); 
-    double dielectric = builtin_afmpb_table_->dielectric(); 
+    double sigma = builtin_dafmpb_table_->sigma(); 
+    double dielectric = builtin_dafmpb_table_->dielectric(); 
 
     Point dx = point_sub(s, t); 
     double r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2] + sigma; 
@@ -587,4 +587,4 @@ class AFMPBLHS {
 
 } // namespace dashmm
 
-#endif // __AFMPB_LHS_H__
+#endif // __DAFMPB_LHS_H__

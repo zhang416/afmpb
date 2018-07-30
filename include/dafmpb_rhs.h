@@ -1,5 +1,5 @@
 //=============================================================================
-// AFMPB: Adaptive Fast Multipole Poisson-Boltzmann Solver 
+// DAFMPB: DASHMM Accelerated Adaptive Fast Multipole Poisson-Boltzmann Solver 
 //
 // Portions Copyright (c) 2014, Institute of Computational Mathematics, CAS
 // Portions Copyright (c) 2014, Oak Ridge National Laboratory
@@ -31,13 +31,13 @@
 namespace dashmm {
 
 template <typename Source, typename Target>
-class AFMPBRHS {
+class DAFMPBRHS {
  public:
   using source_t = Source;
   using target_t = Target;
-  using expansion_t = AFMPBRHS<Source, Target>;
+  using expansion_t = DAFMPBRHS<Source, Target>;
 
-  AFMPBRHS(ExpansionRole role, double scale = 1.0, Point center = Point{})
+  DAFMPBRHS(ExpansionRole role, double scale = 1.0, Point center = Point{})
     : views_{ViewSet{role, center, scale}} {
     // View size for each spherical harmonic expansion
     int p = builtin_laplace_table_->p();
@@ -65,9 +65,9 @@ class AFMPBRHS {
     }
   }
 
-  AFMPBRHS(const ViewSet &views) : views_{views} { }
+  DAFMPBRHS(const ViewSet &views) : views_{views} { }
 
-  ~AFMPBRHS() {
+  ~DAFMPBRHS() {
     int count = views_.count();
     if (count) {
       for (int i = 0; i < count; ++i) {
@@ -166,7 +166,7 @@ class AFMPBRHS {
       auto result = lap_m_to_t(dist, scale, M, true); 
       i->rhs[0] += result[0]; 
       i->rhs[1] += (result[1] * i->normal_o.x() + result[2] * i->normal_o.y() 
-                      + result[3] * i->normal_o.z()); 
+                    + result[3] * i->normal_o.z()); 
     }
   }
 
@@ -179,7 +179,7 @@ class AFMPBRHS {
       auto result = lap_l_to_t(dist, scale, L, true); 
       i->rhs[0] += result[0]; 
       i->rhs[1] -= (result[1] * i->normal_o.x() + result[2] * i->normal_o.y() 
-                      + result[3] * i->normal_o.z()); 
+                    + result[3] * i->normal_o.z()); 
     }
   }
 
@@ -200,7 +200,7 @@ class AFMPBRHS {
       }
       i->rhs[0] += potential; 
       i->rhs[1] -= (fx * i->normal_o.x() + fy * i->normal_o.y() + 
-                      fz * i->normal_o.z()); 
+                    fz * i->normal_o.z()); 
     }
   }
 
@@ -284,4 +284,4 @@ class AFMPBRHS {
 
 } // namespace dashmm
 
-#endif // __AFMPB_RHS_H__
+#endif // __DAFMPB_RHS_H__

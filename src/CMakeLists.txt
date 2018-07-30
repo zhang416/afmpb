@@ -1,5 +1,5 @@
 FILE(GLOB sources *.cc)
-add_executable(afmpb ${sources})
+add_executable(dafmpb ${sources})
 
 include_directories(
   ${HPX_INCLUDE_DIRS}
@@ -7,5 +7,5 @@ include_directories(
   ${dashmm_SOURCE_DIR}/include
 )
 
-target_link_libraries(afmpb PUBLIC dashmm ${HPX_LDFLAGS})
+target_link_libraries(dafmpb PUBLIC dashmm ${HPX_LDFLAGS})
 

@@ -1,5 +1,5 @@
 //=============================================================================
-// AFMPB: Adaptive Fast Multipole Poisson-Boltzmann Solver 
+// DAFMPB: DASHMM Accelerated Adaptive Fast Multipole Poisson-Boltzmann Solver 
 //
 // Portions Copyright (c) 2014, Institute of Computational Mathematics, CAS
 // Portions Copyright (c) 2014, Oak Ridge National Laboratory
@@ -15,11 +15,11 @@
 #include <sstream>
 #include <string> 
 #include <cstring> 
-#include "afmpb.h"
+#include "dafmpb.h"
 
-namespace afmpb {
+namespace dafmpb {
 
-Atom *AFMPB::readAtoms() {
+Atom *DAFMPB::readAtoms() {
   double probe_radius = (!mesh_format_ ? probe_radius_ : 0.0); 
   std::vector<Atom> molecule; 
   std::string line; 
@@ -51,7 +51,7 @@ Atom *AFMPB::readAtoms() {
   return retval; 
 }
 
-std::vector<Node> AFMPB::generateMesh(const Atom *molecule) {
+std::vector<Node> DAFMPB::generateMesh(const Atom *molecule) {
   std::vector<Node> nodes; 
 
   using namespace dashmm; 
@@ -208,7 +208,7 @@ std::vector<Node> AFMPB::generateMesh(const Atom *molecule) {
   return nodes; 
 }
 
-std::vector<Node> AFMPB::readMesh() {
+std::vector<Node> DAFMPB::readMesh() {
   std::vector<Node> nodes; 
 
   using namespace dashmm; 
@@ -368,7 +368,7 @@ std::vector<Node> AFMPB::readMesh() {
   return nodes; 
 }
 
-void AFMPB::processElementGeometry(std::vector<Node> &nodes) {
+void DAFMPB::processElementGeometry(std::vector<Node> &nodes) {
   using namespace dashmm; 
   for (auto &&e : elements_) {
     int i1 = e.nodes[0]; 
@@ -514,7 +514,7 @@ void AFMPB::processElementGeometry(std::vector<Node> &nodes) {
   }
 }
 
-GNode *AFMPB::generateGaussianPoint(const Node *nodes) {
+GNode *DAFMPB::generateGaussianPoint(const Node *nodes) {
   using namespace dashmm; 
   int nelements = elements_.size(); 
   GNode *gauss = new GNode[nelements * 7]; 
@@ -545,4 +545,4 @@ GNode *AFMPB::generateGaussianPoint(const Node *nodes) {
 }
 
 
-} // namespace afmpb 
+} // namespace dafmpb 

@@ -1,5 +1,5 @@
 //=============================================================================
-// AFMPB: Adaptive Fast Multipole Poisson-Boltzmann Solver 
+// DAFMPB: DASHMM Accelerated Adaptive Fast Multipole Poisson-Boltzmann Solver 
 //
 // Portions Copyright (c) 2014, Institute of Computational Mathematics, CAS
 // Portions Copyright (c) 2014, Oak Ridge National Laboratory
@@ -14,10 +14,10 @@
 
 #include <chrono> 
 #include <cassert>
-#include "afmpb.h"
+#include "dafmpb.h"
 #include "dashmm/arraymetadata.h"
 
-namespace afmpb {
+namespace dafmpb {
 
 void sum_ident_handler(double *input, const size_t bytes) {
   size_t count = bytes / sizeof(double); 
@@ -165,7 +165,7 @@ void set_r0(Node *n, const size_t count, const double *unused) {
   }
 }
 
-double AFMPB::generalizedInnerProduct(int x, int y) {
+double DAFMPB::generalizedInnerProduct(int x, int y) {
   using namespace std::chrono; 
   high_resolution_clock::time_point t1, t2; 
 
@@ -182,10 +182,10 @@ double AFMPB::generalizedInnerProduct(int x, int y) {
   return retval;
 }
 
-void AFMPB::linearCombination(int k) {
+void DAFMPB::linearCombination(int k) {
   hpx_addr_t data = nodes_.data(); 
   double *c = residual_.data(); 
   hpx_run_spmd(&linear_combination_, nullptr, &data, &c, &k); 
 }
 
-} // namespace afmpb 
+} // namespace dafmpb 

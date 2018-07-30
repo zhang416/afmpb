@@ -1,5 +1,5 @@
 //=============================================================================
-// AFMPB: Adaptive Fast Multipole Poisson-Boltzmann Solver 
+// DAFMPB: DASHMM Accelerated Adaptive Fast Multipole Poisson-Boltzmann Solver 
 //
 // Portions Copyright (c) 2014, Institute of Computational Mathematics, CAS
 // Portions Copyright (c) 2014, Oak Ridge National Laboratory
@@ -15,14 +15,14 @@
 #include <cstdio>
 #include <iomanip>
 #include <hpx/hpx.h>
-#include "afmpb.h"
-#include "afmpb_rhs.h"
+#include "dafmpb.h"
+#include "dafmpb_rhs.h"
 
-namespace afmpb {
+namespace dafmpb {
 
-dashmm::Evaluator<Atom, GNode, dashmm::AFMPBRHS, dashmm::FMM97> interp{};
+dashmm::Evaluator<Atom, GNode, dashmm::DAFMPBRHS, dashmm::FMM97> interp{};
 
-void AFMPB::setup() {
+void DAFMPB::setup() {
   Atom *molecule{nullptr}; 
   std::vector<Node> nodes;
 
@@ -75,7 +75,7 @@ void AFMPB::setup() {
   assert(err == dashmm::kSuccess);
 }
 
-void AFMPB::computeEnergy(bool status) {
+void DAFMPB::computeEnergy(bool status) {
   // Compute the energy on if the GMRES has converged
   if (!status) 
     return; 
@@ -108,7 +108,7 @@ void AFMPB::computeEnergy(bool status) {
     assert(err == dashmm::kSuccess); 
    
     // Compute the values on the Gaussian points 
-    dashmm::FMM97<Atom, GNode, dashmm::AFMPBRHS> method{}; 
+    dashmm::FMM97<Atom, GNode, dashmm::DAFMPBRHS> method{}; 
     std::vector<double> kparam{};
     
     err = interp.evaluate(atoms_, gauss_, refine_limit_, &method,
@@ -178,7 +178,7 @@ void AFMPB::computeEnergy(bool status) {
   }
 }
 
-void AFMPB::finalize(bool status) {
+void DAFMPB::finalize(bool status) {
   // Close the I/O streams
   if (hpx_get_my_rank() == 0) {
     pqr_.close(); 
@@ -201,8 +201,8 @@ void AFMPB::finalize(bool status) {
     assert(gauss_.destroy() == dashmm::kSuccess); 
 }
 
-double AFMPB::polarEnergy(const GNode *gauss, int ngauss,
-                          const Node *nodes, int nnodes) const {
+double DAFMPB::polarEnergy(const GNode *gauss, int ngauss,
+                           const Node *nodes, int nnodes) const {
   double b = 0;
 
   if (mesh_format_) {
@@ -244,4 +244,4 @@ double AFMPB::polarEnergy(const GNode *gauss, int ngauss,
 }
 
 
-} // namespace afmpb
+} // namespace dafmpb

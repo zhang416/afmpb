@@ -1,5 +1,5 @@
 //=============================================================================
-// AFMPB: Adaptive Fast Multipole Poisson-Boltzmann Solver 
+// DAFMPB: DASHMM Accelerated Adaptive Fast Multipole Poisson-Boltzmann Solver 
 //
 // Portions Copyright (c) 2014, Institute of Computational Mathematics, CAS
 // Portions Copyright (c) 2014, Oak Ridge National Laboratory
@@ -12,11 +12,11 @@
 // the Free Software Foundation. 
 //=============================================================================
 
-#include "afmpb_lhs.h"
+#include "dafmpb_lhs.h"
 
 namespace dashmm {
 
-std::unique_ptr<AFMPBTable> builtin_afmpb_table_; 
+std::unique_ptr<DAFMPBTable> builtin_dafmpb_table_; 
 
 void dlap_s_to_m(Point dist, double q, double scale, Point normal, 
                  dcomplex_t *M) {
@@ -355,11 +355,11 @@ void dyuk_s_to_l(Point dist, double q, double scale, Point normal,
   }
 }
 
-void update_afmpb_table(double dielectric, double cut1, double cut2, 
-                        double sigma, int restart) {
-  if (builtin_afmpb_table_ == nullptr) 
-    builtin_afmpb_table_ = std::unique_ptr<AFMPBTable>
-      {new AFMPBTable{dielectric, cut1, cut2, sigma, restart}}; 
+void update_dafmpb_table(double dielectric, double cut1, double cut2, 
+                         double sigma, int restart) {
+  if (builtin_dafmpb_table_ == nullptr) 
+    builtin_dafmpb_table_ = std::unique_ptr<DAFMPBTable>
+      {new DAFMPBTable{dielectric, cut1, cut2, sigma, restart}}; 
 }
 
 } // namespace dashmm 

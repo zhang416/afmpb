@@ -1,5 +1,5 @@
 //=============================================================================
-// AFMPB: Adaptive Fast Multipole Poisson-Boltzmann Solver 
+// DAFMPB: DASHMM Accelerated Adaptive Fast Multipole Poisson-Boltzmann Solver 
 //
 // Portions Copyright (c) 2014, Institute of Computational Mathematics, CAS
 // Portions Copyright (c) 2014, Oak Ridge National Laboratory
@@ -14,9 +14,9 @@
 
 #include <cstdio>
 #include <getopt.h>
-#include "afmpb.h"
+#include "dafmpb.h"
 
-namespace afmpb {
+namespace dafmpb {
 
 void usage(char *program) {
   fprintf(stdout, "usage: %s --pqr-file=FILE [options] \n"
@@ -177,7 +177,7 @@ int finalize() {
   return 0;
 }
 
-AFMPB::AFMPB(std::unique_ptr<Configuration> p) {
+DAFMPB::DAFMPB(std::unique_ptr<Configuration> p) {
   // Process the input stream on rank 0 only 
   if (hpx_get_my_rank() == 0) {
     pqr_.open(p->pqr_file); 
@@ -253,4 +253,4 @@ AFMPB::AFMPB(std::unique_ptr<Configuration> p) {
   setup(); 
 }
 
-} // namespace afmpb
+} // namespace dafmpb

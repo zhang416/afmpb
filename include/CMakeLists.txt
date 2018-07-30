@@ -1,1 +1,1 @@
-FILE (GLOB afmpb_headers *.h)
+FILE (GLOB dafmpb_headers *.h)

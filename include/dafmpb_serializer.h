@@ -1,5 +1,5 @@
 //=============================================================================
-// AFMPB: Adaptive Fast Multipole Poisson-Boltzmann Solver 
+// DAFMPB: DASHMM Accelerated Adaptive Fast Multipole Poisson-Boltzmann Solver 
 //
 // Portions Copyright (c) 2014, Institute of Computational Mathematics, CAS
 // Portions Copyright (c) 2014, Oak Ridge National Laboratory
@@ -12,13 +12,13 @@
 // the Free Software Foundation. 
 //=============================================================================
 
-#ifndef __AFMPB_SERIALIZER_H__
-#define __AFMPB_SERIALIZER_H__
+#ifndef __DAFMPB_SERIALIZER_H__
+#define __DAFMPB_SERIALIZER_H__
 
 #include <cstring> 
 #include "dashmm/serializer.h"
-#include "afmpb.h"
-#include "afmpb_lhs.h"
+#include "dafmpb.h"
+#include "dafmpb_lhs.h"
 
 namespace dashmm {
 
@@ -27,17 +27,17 @@ public:
   ~NodeFullSerializer() { } 
 
   size_t size(void *object) const override {
-    afmpb::Node *n = reinterpret_cast<afmpb::Node *>(object); 
+    dafmpb::Node *n = reinterpret_cast<dafmpb::Node *>(object); 
     size_t retval = 0; 
     retval = sizeof(int) * 3 + // Index, n_patches,  gmres buffer size
       sizeof(Point) * 3 + // position, normal_i and normal_o 
-      sizeof(afmpb::Patch) * n->patch.size() + // patch 
+      sizeof(dafmpb::Patch) * n->patch.size() + // patch 
       sizeof(double) * 8; // area, projected, rhs[0]@2, x0@[2], gmres[0]@2
     return retval; 
   }
 
   void *serialize(void *object, void *buffer) const override {
-    afmpb::Node *n = reinterpret_cast<afmpb::Node *>(object); 
+    dafmpb::Node *n = reinterpret_cast<dafmpb::Node *>(object); 
     char *dest = reinterpret_cast<char *>(buffer); 
     size_t bytes = 0; 
     int n_patches = n->patch.size(); 
@@ -63,7 +63,7 @@ public:
     memcpy(dest, &(n->normal_o), bytes); 
     dest += bytes; 
 
-    bytes = sizeof(afmpb::Patch) * n_patches; 
+    bytes = sizeof(dafmpb::Patch) * n_patches; 
     memcpy(dest, n->patch.data(), bytes); 
     dest += bytes; 
 
@@ -88,7 +88,7 @@ public:
   }
 
   void *deserialize(void *buffer, void *object) const override {
-    afmpb::Node *n = reinterpret_cast<afmpb::Node *>(object); 
+    dafmpb::Node *n = reinterpret_cast<dafmpb::Node *>(object); 
     char *src = reinterpret_cast<char *>(buffer); 
     size_t bytes = 0; 
     int n_patches = 0; 
@@ -115,10 +115,10 @@ public:
     memcpy(&(n->normal_o), src, bytes); 
     src += bytes; 
 
-    afmpb::Patch *p = reinterpret_cast<afmpb::Patch *>(src); 
+    dafmpb::Patch *p = reinterpret_cast<dafmpb::Patch *>(src); 
     n->patch.assign(p, p + n_patches); 
 
-    src += sizeof(afmpb::Patch) * n_patches; 
+    src += sizeof(dafmpb::Patch) * n_patches; 
 
     bytes = sizeof(double); 
     memcpy(&(n->area), src, bytes); 
@@ -154,8 +154,8 @@ public:
   } 
 
   void *serialize(void *object, void *buffer) const override {
-    int iter = builtin_afmpb_table_->s_iter(); 
-    afmpb::Node *n = reinterpret_cast<afmpb::Node *>(object); 
+    int iter = builtin_dafmpb_table_->s_iter(); 
+    dafmpb::Node *n = reinterpret_cast<dafmpb::Node *>(object); 
     char *dest = reinterpret_cast<char *>(buffer); 
     size_t bytes = 0; 
     int n_gmres = n->gmres.size(); 
@@ -187,8 +187,8 @@ public:
   }
    
   void *deserialize(void *buffer, void *object) const override {
-    int iter = builtin_afmpb_table_->s_iter(); 
-    afmpb::Node *n = reinterpret_cast<afmpb::Node *>(object); 
+    int iter = builtin_dafmpb_table_->s_iter(); 
+    dafmpb::Node *n = reinterpret_cast<dafmpb::Node *>(object); 
     char *src = reinterpret_cast<char *>(buffer); 
     size_t bytes = 0; 
     int n_gmres = 0; 
@@ -234,7 +234,7 @@ public:
   }
 
   void *serialize(void *object, void *buffer) const override {
-    afmpb::Node *n = reinterpret_cast<afmpb::Node *>(object); 
+    dafmpb::Node *n = reinterpret_cast<dafmpb::Node *>(object); 
     char *dest = reinterpret_cast<char *>(buffer); 
     size_t bytes = 0; 
 
@@ -265,7 +265,7 @@ public:
   }
 
   void *deserialize(void *buffer, void *object) const override {
-    afmpb::Node *n = reinterpret_cast<afmpb::Node *>(object); 
+    dafmpb::Node *n = reinterpret_cast<dafmpb::Node *>(object); 
     char *src = reinterpret_cast<char *>(buffer); 
     size_t bytes = 0; 
 
@@ -298,4 +298,4 @@ public:
 } // namespace dashmm
 
 
-#endif // __AFMPB_SERIALIZER_H__
+#endif // __DAFMPB_SERIALIZER_H__

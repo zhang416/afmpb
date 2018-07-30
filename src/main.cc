@@ -1,5 +1,5 @@
 //=============================================================================
-// AFMPB: Adaptive Fast Multipole Poisson-Boltzmann Solver 
+// DAFMPB: DASHMM Accelerated Adaptive Fast Multipole Poisson-Boltzmann Solver 
 //
 // Portions Copyright (c) 2014, Institute of Computational Mathematics, CAS
 // Portions Copyright (c) 2014, Oak Ridge National Laboratory
@@ -12,13 +12,13 @@
 // the Free Software Foundation. 
 //=============================================================================
 
-#include "afmpb.h"
+#include "dafmpb.h"
 
 int main(int argc, char **argv) {
-  auto parameter = afmpb::init(argc, argv); 
+  auto parameter = dafmpb::init(argc, argv); 
 
   if (parameter) {
-    afmpb::AFMPB system(std::move(parameter)); 
+    dafmpb::DAFMPB system(std::move(parameter)); 
 
     auto status = system.computePotential(); 
 
@@ -27,7 +27,7 @@ int main(int argc, char **argv) {
     system.finalize(status); 
   } 
 
-  auto err = afmpb::finalize(); 
+  auto err = dafmpb::finalize(); 
   assert(err == 0); 
 
   return 0;

@@ -1,5 +1,5 @@
 //=============================================================================
-// AFMPB: Adaptive Fast Multipole Poisson-Boltzmann Solver 
+// DAFMPB: DASHMM Accelerated Adaptive Fast Multipole Poisson-Boltzmann Solver 
 //
 // Portions Copyright (c) 2014, Institute of Computational Mathematics, CAS
 // Portions Copyright (c) 2014, Oak Ridge National Laboratory
@@ -12,8 +12,8 @@
 // the Free Software Foundation. 
 //=============================================================================
 
-#ifndef __AFMPB_H__
-#define __AFMPB_H__
+#ifndef __DAFMPB_H__
+#define __DAFMPB_H__
 
 #include <fstream>
 #include <memory>
@@ -21,7 +21,7 @@
 #include <complex>
 #include "dashmm/dashmm.h"
 
-namespace afmpb {
+namespace dafmpb {
 
 struct Configuration; 
 struct Node; 
@@ -108,10 +108,10 @@ struct GNode {
   double rhs[2] = {0.0};  
 }; 
 
-class AFMPB {
+class DAFMPB {
 public:
-  AFMPB(std::unique_ptr<Configuration> p); 
-  ~AFMPB() {
+  DAFMPB(std::unique_ptr<Configuration> p); 
+  ~DAFMPB() {
     if (mesh_format_) {
       delete [] xi_; 
       delete [] eta_; 
@@ -226,7 +226,7 @@ private:
   double volume_; 
 }; 
 
-} // namespace afmpb 
+} // namespace dafmpb 
 
 
 

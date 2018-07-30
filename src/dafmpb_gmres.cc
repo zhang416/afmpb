@@ -1,5 +1,5 @@
 //=============================================================================
-// AFMPB: Adaptive Fast Multipole Poisson-Boltzmann Solver 
+// DAFMPB: DASHMM Accelerated Adaptive Fast Multipole Poisson-Boltzmann Solver 
 //
 // Portions Copyright (c) 2014, Institute of Computational Mathematics, CAS
 // Portions Copyright (c) 2014, Oak Ridge National Laboratory
@@ -17,23 +17,23 @@
 #include <memory>
 #include <chrono>
 #include <hpx/hpx.h>
-#include "afmpb.h"
-#include "afmpb_lhs.h"
-#include "afmpb_rhs.h"
-#include "afmpb_serializer.h"
+#include "dafmpb.h"
+#include "dafmpb_lhs.h"
+#include "dafmpb_rhs.h"
+#include "dafmpb_serializer.h"
 #include "fmm97NL3_method.h"
 
-namespace afmpb {
+namespace dafmpb {
 
-dashmm::Evaluator<Atom, Node, dashmm::AFMPBRHS, dashmm::FMM97> rhs{};
-dashmm::Evaluator<Node, Node, dashmm::AFMPBLHS, dashmm::FMM97NL3> lhs{}; 
+dashmm::Evaluator<Atom, Node, dashmm::DAFMPBRHS, dashmm::FMM97> rhs{};
+dashmm::Evaluator<Node, Node, dashmm::DAFMPBLHS, dashmm::FMM97NL3> lhs{}; 
 dashmm::ArrayForEachAction<Node, double> rhs_action{set_rhs}; 
 dashmm::ArrayForEachAction<Node, double> r0_action{set_r0}; 
 
 using namespace std::chrono; 
 high_resolution_clock::time_point t1, t2; 
 
-bool AFMPB::computePotential() {
+bool DAFMPB::computePotential() {
   int myrank = hpx_get_my_rank(); 
 
   bool terminate = false, converged = false, compute = false; 
@@ -51,7 +51,7 @@ bool AFMPB::computePotential() {
   std::unique_ptr<Serializer> m_min{new NodeMinimumSerializer}; 
 
   // Compute right-hand side b 
-  dashmm::FMM97<Atom, Node, dashmm::AFMPBRHS> m_rhs{}; 
+  dashmm::FMM97<Atom, Node, dashmm::DAFMPBRHS> m_rhs{}; 
   std::vector<double> kparam_rhs{}; 
  
   auto err = nodes_.set_manager(std::move(m_full)); 
@@ -81,7 +81,7 @@ bool AFMPB::computePotential() {
   }
 
   // Create DAG for Ax computation
-  dashmm::FMM97NL3<Node, Node, dashmm::AFMPBLHS> m_lhs{};
+  dashmm::FMM97NL3<Node, Node, dashmm::DAFMPBLHS> m_lhs{};
 
   std::vector<double> kparam_lhs;
   kparam_lhs.push_back(kap_); 
@@ -98,7 +98,7 @@ bool AFMPB::computePotential() {
   t_dag_ = duration_cast<duration<double>>(t2 - t1).count(); 
 
   while (terminate == false) {
-    dashmm::builtin_afmpb_table_->resetIter(); 
+    dashmm::builtin_dafmpb_table_->resetIter(); 
 
     // Compute Ax0 
     t1 = high_resolution_clock::now(); 
@@ -173,7 +173,7 @@ bool AFMPB::computePotential() {
         break;
       } 
 
-      dashmm::builtin_afmpb_table_->increIter(); 
+      dashmm::builtin_dafmpb_table_->increIter(); 
 
       // Here, alpha is above the tolerance. Reset the DAG if GMRES has not
       // reached maximum allowed matrix-vector multiply
@@ -247,8 +247,8 @@ bool AFMPB::computePotential() {
 }
 
 
-void AFMPB::modifiedGramSchmidtReOrth() {  
-  int k = dashmm::builtin_afmpb_table_->s_iter(); 
+void DAFMPB::modifiedGramSchmidtReOrth() {  
+  int k = dashmm::builtin_dafmpb_table_->s_iter(); 
 
   // [Aq_0, ...., Aq_k] = [q_0, ..., q_k, q_{k + 1}] * hess; 
   
@@ -295,8 +295,8 @@ void AFMPB::modifiedGramSchmidtReOrth() {
   hess_[hidx] = Aqk_norm2; 
 }
 
-void AFMPB::applyGivensRotation() {
-  int k = dashmm::builtin_afmpb_table_->s_iter(); 
+void DAFMPB::applyGivensRotation() {
+  int k = dashmm::builtin_dafmpb_table_->s_iter(); 
 
   // [Aq_0, ...., Aq_k] = [q_0, ..., q_k, q_{k + 1}] * hess; 
 
@@ -317,8 +317,8 @@ void AFMPB::applyGivensRotation() {
   generateGivensRotation(hess_[hidx + k], hess_[hidx + k + 1]); 
 }
 
-void AFMPB::generateGivensRotation(double &x, double &y) {
-  int k = dashmm::builtin_afmpb_table_->s_iter(); 
+void DAFMPB::generateGivensRotation(double &x, double &y) {
+  int k = dashmm::builtin_dafmpb_table_->s_iter(); 
 
   if (x == 0.0 && y == 0.0) {
     cosine_[k] = 1.0; 
@@ -344,8 +344,8 @@ void AFMPB::generateGivensRotation(double &x, double &y) {
   x = fabs(x * y);  
 }
 
-double AFMPB::updateResidualNorm() {
-  int k = dashmm::builtin_afmpb_table_->s_iter(); 
+double DAFMPB::updateResidualNorm() {
+  int k = dashmm::builtin_dafmpb_table_->s_iter(); 
 
   double c = cosine_[k]; 
   double s = sine_[k]; 
@@ -356,9 +356,9 @@ double AFMPB::updateResidualNorm() {
   return residual_[k + 1]; 
 }
 
-int AFMPB::computeApproxSolution(bool converged) {
-  int k = (converged ? dashmm::builtin_afmpb_table_->t_iter() : 
-           dashmm::builtin_afmpb_table_->s_iter()); 
+int DAFMPB::computeApproxSolution(bool converged) {
+  int k = (converged ? dashmm::builtin_dafmpb_table_->t_iter() : 
+           dashmm::builtin_dafmpb_table_->s_iter()); 
 
   // [Aq_0, ..., Aq_{k - 1}] = [q_0, ..., q_{k - 1}, q_k] * hess_; 
   
@@ -395,4 +395,4 @@ int AFMPB::computeApproxSolution(bool converged) {
   return 0;
 }
 
-} // namespace afmpb
+} // namespace dafmpb
