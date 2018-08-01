@@ -253,7 +253,7 @@ std::vector<Node> DAFMPB::readMesh() {
       elements_[i].nodes.push_back(i2); 
       elements_[i].nodes.push_back(i3); 
     }
-  } else {
+  } else if (mesh_format_ == 3) {
     // DAT format, nodes are indexed from 1
     for (int i = 0; i < nnodes; ++i) {
       double x, y, z; 
@@ -269,6 +269,23 @@ std::vector<Node> DAFMPB::readMesh() {
       elements_[i].nodes.push_back(i2 - 1); 
       elements_[i].nodes.push_back(i3 - 1);
     }
+  } else if (mesh_format_ == 4) {
+    // Nodes are indexed from 0
+    for (int i = 0; i < nnodes; ++i) {
+      double x, y, z, nx, ny, nz;
+      mesh_ >> x >> y >> z >> nx >> ny >> nz;
+      nodes[i].index = i;
+      nodes[i].position = Point{x, y, z}; 
+      nodes[i].normal_o = Point{nx, ny, nz}; 
+    }
+
+    for (int i = 0; i < nelements; ++i) {
+      int u, i1, i2, i3;
+      mesh_ >> u >> i1 >> i2 >> i3; 
+      elements_[i].nodes.push_back(i1); 
+      elements_[i].nodes.push_back(i2); 
+      elements_[i].nodes.push_back(i3); 
+    }    
   }
 
   // Make sure the normal direction is the outer direction 

@@ -45,6 +45,8 @@ void usage(char *program) {
           "  Solver options:\n"
           "  --accuracy=[3|6]\n"
           "    accuracy of the multipole method, default value is 3-digits\n"
+          "  --refine-limit=num\n"
+          "    refinement limit for the multipole method, default value is 50\n"
           "  --rel-tolerance=num\n"
           "    GMRES relative tolerance, default value is 1e-2 \n"
           "  --abs-tolerance=num\n"
@@ -85,7 +87,8 @@ std::unique_ptr<Configuration> init(int argc, char **argv) {
     {"rel-tolerance", required_argument, 0, 'y'}, 
     {"abs-tolerance", required_argument, 0, 'z'}, 
     {"restart", required_argument, 0, 'k'}, 
-    {"max-restart", required_argument, 0, 'n'}, 
+    {"max-restart", required_argument, 0, 'n'},
+    {"refine-limit", required_argument, 0, 'b'}, 
     {"help", no_argument, 0, 'h'}, 
     {0, 0, 0, 0}
   };
@@ -95,7 +98,7 @@ std::unique_ptr<Configuration> init(int argc, char **argv) {
   int opt = 0; 
   int long_index = 0; 
   while ((opt = getopt_long(argc, argv, 
-                            "q:m:l:s:f:d:r:i:e:c:t:g:p:a:k:n:y:z:h", 
+                            "q:m:l:s:f:d:r:i:e:c:t:g:p:a:k:n:y:z:b:h", 
                             long_options, &long_index)) != -1) {
     switch (opt) {
     case 'q':
@@ -151,6 +154,9 @@ std::unique_ptr<Configuration> init(int argc, char **argv) {
       break;
     case 'z':
       p->abs_tolerance = atof(optarg);
+      break;
+    case 'b':
+      p->refine_limit = atoi(optarg);
       break; 
     case 'h':
     case '?':
@@ -206,8 +212,10 @@ DAFMPB::DAFMPB(std::unique_ptr<Configuration> p) {
   max_restart_ = p->max_restart; 
   rel_tolerance_ = p->rel_tolerance; 
   abs_tolerance_ = p->abs_tolerance; 
-  refine_limit_ = 50; 
+  //refine_limit_ = 50; 
+  refine_limit_ = p->refine_limit; 
 
+  
   if (mesh_format_ == 0) {
     cut1_ = 0.1; 
     cut2_ = 0.0001; 

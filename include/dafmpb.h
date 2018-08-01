@@ -56,7 +56,8 @@ struct Configuration {
   double rel_tolerance = 1e-2;
   double abs_tolerance = 0.0;   
   int restart = 50; 
-  int max_restart = 1; 
+  int max_restart = 1;
+  int refine_limit = 50; 
 }; 
 
 struct Atom {
